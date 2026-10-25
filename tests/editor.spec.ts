@@ -50,6 +50,7 @@ test('native clipboard preserves inline and block equations; undo is isolated pe
  await expect(page.locator('.tiptap .katex')).toHaveCount(2);
  await page.locator('.tiptap [data-type="block-math"]').click();
  await expect(page.getByRole('dialog')).toBeVisible();
+ await expect(page.locator('math-field')).toBeVisible();
  await page.getByText('Editar código LaTeX (opcional)').click();
  await page.getByRole('textbox', { name: 'Código LaTeX' }).fill('x^3');
  await page.getByRole('button', { name: 'Guardar ecuación' }).click();
@@ -57,4 +58,41 @@ test('native clipboard preserves inline and block equations; undo is isolated pe
  await page.getByRole('button', { name: 'El lenguaje del universo Tu primer documento' }).click();
  await page.getByRole('button', { name: 'Deshacer', exact: true }).click();
  await expect(page.locator('.tiptap h1')).toHaveText('El lenguaje del universo');
+});
+test('formal equations renumber after insertion, deletion and undo, including print', async ({ page, context }) => {
+ await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+ await page.goto('/');
+ await page.getByRole('button', { name: 'Nuevo documento' }).click();
+ await page.getByPlaceholder('Mi próxima gran idea').fill('Ecuaciones numeradas');
+ await page.getByRole('button', { name: 'Crear documento' }).click();
+ await page.locator('.tiptap p').last().click();
+ await page.evaluate(() => navigator.clipboard.writeText('Texto $a+b$\n$$x=1$$\n$$y=2$$\n$$z=3$$'));
+ await page.keyboard.press('Control+V');
+ const blocks = page.locator('.tiptap [data-type="block-math"]');
+ const numbers = () => blocks.evaluateAll(nodes => nodes.map(n => n.getAttribute('data-equation-number')));
+ await expect.poll(numbers).toEqual(['1', '2', '3']);
+ await expect(page.locator('.tiptap [data-type="inline-math"]')).not.toHaveAttribute('data-equation-number');
+ const appearance = () => blocks.first().evaluate(n => ({ border: getComputedStyle(n).borderTopWidth, background: getComputedStyle(n).backgroundColor, number: getComputedStyle(n, '::after').content }));
+ expect(await appearance()).toEqual({ border: '0px', background: 'rgba(0, 0, 0, 0)', number: '"(1)"' });
+ await blocks.first().hover();
+ expect((await appearance()).background).toBe('rgba(0, 0, 0, 0)');
+ // Keep paste and deletion in separate undo groups (history uses a 500 ms delay).
+ await page.waitForTimeout(600);
+ // Use Tiptap's node selection so Backspace deletes an atomic equation.
+ await page.locator('.tiptap').evaluate(element => {
+   const editor = (element as HTMLElement & { editor: import('@tiptap/core').Editor }).editor;
+   let first: number | undefined;
+   editor.state.doc.descendants((node, pos) => { if (first === undefined && node.type.name === 'blockMath') first = pos; });
+   editor.chain().focus().setNodeSelection(first!).run();
+ });
+ await expect(blocks.first()).toHaveClass(/ProseMirror-selectednode/);
+ await page.keyboard.press('Backspace');
+ await expect.poll(numbers).toEqual(['1', '2']);
+ await page.getByRole('button', { name: 'Deshacer', exact: true }).click();
+ await expect.poll(numbers).toEqual(['1', '2', '3']);
+ await page.emulateMedia({ media: 'print' });
+ expect(await appearance()).toEqual({ border: '0px', background: 'rgba(0, 0, 0, 0)', number: '"(1)"' });
+ await page.emulateMedia({ media: 'screen' });
+ await page.getByRole('button', { name: 'El lenguaje del universo Tu primer documento' }).click();
+ await expect.poll(numbers).toEqual(['1']);
 });

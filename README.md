@@ -26,7 +26,7 @@ Las pruebas de navegador utilizan `/usr/bin/chromium`. En otra máquina, define 
 
 - Documentos múltiples, búsqueda, renombrado y plantilla académica.
 - Editor visual con títulos, listas, negrita, cursiva, subrayado y alineación.
-- Matemáticas visuales con teclado MathLive, plantillas y edición al hacer clic.
+- Matemáticas visuales con teclado MathLive, plantillas y edición al hacer clic. Las ecuaciones en bloque se muestran sin recuadro, centradas y numeradas automáticamente a la derecha; la numeración se recalcula al editar y se conserva al imprimir. Las fórmulas en línea no llevan número. La exportación usa el entorno `equation` para numeración nativa en LaTeX.
 - Pegado de texto con fórmulas delimitadas por `$$…$$`, `\[…\]`, `\(…\)` o `$…$`.
 - Exportación `.tex` con `article`, `amsmath`, `amssymb` y español; impresión/PDF mediante navegador.
 - Guardado automático en `localStorage`. No requiere claves ni servicios externos. Las fuentes se sirven localmente.

@@ -18,7 +18,7 @@ const escapeTex = (s: string) => s.replace(/[\\{}$&#%_~^]/g, c => ({ '\\': '\\te
 export function nodeToLatex(node: DocNode): string {
   if (node.type === 'text') { let text = escapeTex(node.text || ''); for (const mark of node.marks || []) { if (mark.type === 'bold') text = `\\textbf{${text}}`; if (mark.type === 'italic') text = `\\textit{${text}}`; if (mark.type === 'underline') text = `\\underline{${text}}`; } return text; }
   if (node.type === 'inlineMath') return `$${node.attrs?.latex || ''}$`;
-  if (node.type === 'blockMath') return `\n\\[\n${node.attrs?.latex || ''}\n\\]\n`;
+  if (node.type === 'blockMath') return `\n\\begin{equation}\n${node.attrs?.latex || ''}\n\\end{equation}\n`;
   const inner = (node.content || []).map(nodeToLatex).join('');
   switch (node.type) {
     case 'heading': return `\n\\${node.attrs?.level === 1 ? 'section*' : node.attrs?.level === 2 ? 'subsection*' : 'subsubsection*'}{${inner}}\n`;
