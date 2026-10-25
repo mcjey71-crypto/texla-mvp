@@ -39,3 +39,36 @@
   .tiptap [data-type="block-math"] { border: 0; background: transparent; box-shadow: none; }
   .tiptap [data-type="block-math"] .block-math-inner { overflow: visible; }
 }
+/* Citations are inline atoms; their visible number is derived from first use. */
+.tiptap .citation{display:inline;font-size:0;color:#35543d;white-space:nowrap;vertical-align:baseline;cursor:default}
+.tiptap .citation::after{content:"[" attr(data-citation-number) "]";font-size:12px;font-family:var(--document-font);font-variant-numeric:lining-nums tabular-nums}
+.tiptap .citation.ProseMirror-selectednode{outline:1px solid #8caa75;background:#eef3e6;border-radius:2px}
+.reference-toolbar{border-left:1px solid #e6e8e1;padding-left:10px}
+.reference-manager>p{font-size:11px;line-height:1.8;color:#829175}
+.reference-manager .field-label{margin:13px 0}
+.reference-fields>div{display:grid;grid-template-columns:1fr 110px;gap:12px}
+.reference-fields .field-label span{font-weight:400;color:#a0a891;font-size:9px}
+.reference-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-top:18px}
+.reference-duplicate{display:flex;align-items:flex-start;gap:11px;background:#edf4e6;border:1px solid #d3e1c5;border-radius:6px;padding:15px;margin:15px 0;color:#456639}
+.reference-duplicate strong,.reference-duplicate span,.reference-duplicate small{display:block}
+.reference-duplicate strong{font-size:12px}.reference-duplicate span{font-size:12px;margin:7px 0;overflow-wrap:anywhere}.reference-duplicate small{font-size:10px;color:#7a8f69}
+.reference-manager .reference-error{color:#a74c38;font-size:11px}.reference-manager .reference-notice{color:#557744;font-size:11px}
+.reference-manager .reference-note{font-size:9px;color:#929e84;margin:16px 0 22px}
+.reference-library-heading{border-top:1px solid #e1e7d7;padding-top:17px}
+.reference-library-heading h3{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:500;color:#546f46;margin:0 0 13px}
+.reference-library-heading h3 span{margin-left:auto;background:#edf1e4;padding:3px 7px;border-radius:4px;font-size:10px}
+.reference-library-heading label{display:flex;align-items:center;gap:8px;border:1px solid #dfe6d5;background:#f8faf3;padding:9px;border-radius:5px;color:#899a75}
+.reference-library-heading input{border:0;background:none;font-size:10px;min-width:0;width:100%;outline:none}
+.reference-library{margin-top:12px;max-height:270px;overflow-y:auto}
+.reference-entry{display:flex;align-items:flex-start;gap:10px;padding:14px 0;border-bottom:1px solid #e9ecdf}
+.reference-entry>div{flex:1;min-width:0}.reference-entry-number{font-family:Georgia,serif;font-size:12px;color:#6b8156;width:24px;flex-shrink:0}
+.reference-entry strong{display:block;font-size:12px;font-weight:500;color:#405a36;overflow-wrap:anywhere}.reference-entry small{display:block;color:#8d997e;font-size:10px;margin:5px 0}
+.reference-entry a{display:block;color:#6f8c57;font-size:9px;overflow-wrap:anywhere;text-decoration:none;line-height:1.6}.reference-entry a svg{margin-left:5px}
+.reference-use{display:block;font-size:8px;color:#9ca88f;margin-top:6px}
+.reference-cite{display:flex;align-items:center;gap:4px;background:#eff4e6;color:#5f7b47;padding:7px 10px;border-radius:4px;font-size:10px;flex-shrink:0}.reference-cite:hover{background:#e2ebd6}
+.reference-empty{text-align:center;color:#9ba98d;padding:25px 10px}.reference-empty p{font-size:12px}.reference-empty span{font-size:10px}
+.bibliography{font-family:var(--document-font);font-size:11px;line-height:1.8;color:#51574e;margin-top:30px;border-top:1px solid #e4e7dc;padding-top:12px}
+.bibliography h2{font-family:Georgia,serif;font-size:17px;color:#364b34;font-weight:400;break-after:avoid}
+.bibliography ol{list-style:none;padding:0}.bibliography li{display:flex;gap:12px;margin-bottom:13px;break-inside:avoid}.bibliography-number{min-width:25px;flex-shrink:0;font-variant-numeric:lining-nums tabular-nums}.bibliography li>div{min-width:0;overflow-wrap:anywhere}.bibliography cite{font-style:normal}.bibliography a{color:inherit;text-decoration:none;overflow-wrap:anywhere}
+@media print{.tiptap .citation{color:inherit}.tiptap .citation.ProseMirror-selectednode{outline:0;background:transparent}}
+@media(max-width:760px){.reference-actions{align-items:stretch;flex-direction:column}.reference-actions .text-button{padding:8px}.reference-fields>div{grid-template-columns:1fr 85px}.reference-entry{gap:6px}.reference-entry strong{font-size:11px}.reference-cite{padding:6px;font-size:9px}.toolbar .reference-toolbar{flex-shrink:0}.bibliography{font-size:10px}}
