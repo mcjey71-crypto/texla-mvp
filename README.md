@@ -25,7 +25,7 @@ Las pruebas de navegador utilizan `/usr/bin/chromium`. En otra máquina, define 
 ## Funciones
 
 - Documentos múltiples, búsqueda, renombrado y plantilla académica.
-- Editor visual con títulos, listas, negrita, cursiva, subrayado y alineación.
+- Editor visual con títulos, listas, negrita, cursiva, subrayado y alineación izquierda, centrada, derecha o justificada. Usa el botón Justificar o Ctrl+Mayús+J; en pantallas pequeñas, el selector de alineación. La elección se guarda con el documento y se conserva al imprimir. La exportación LaTeX justifica por defecto y aplica las otras alineaciones por párrafo.
 - Matemáticas visuales con teclado MathLive, plantillas y edición al hacer clic. Las ecuaciones en bloque se muestran sin recuadro, centradas y numeradas automáticamente a la derecha; la numeración se recalcula al editar y se conserva al imprimir. Las fórmulas en línea no llevan número. La exportación usa el entorno `equation` para numeración nativa en LaTeX.
 - Pegado de texto con fórmulas delimitadas por `$$…$$`, `\[…\]`, `\(…\)` o `$…$`.
 - Biblioteca de referencias por documento, citas numéricas por primera aparición y bibliografía automática. La misma fuente reutiliza su número; eliminar citas renumera las restantes. Los enlaces normalizados y DOI detectan fuentes ya registradas.

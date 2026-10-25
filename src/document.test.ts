@@ -31,3 +31,12 @@ describe('formal equation numbering', () => {
   expect(out).not.toContain('\\tag');
  });
 });
+describe('paragraph alignment export', () => {
+ it('scopes ragged alignment so subsequent paragraphs retain native LaTeX justification', () => {
+  const out = exportLatex('Alineación', { type: 'doc', content: [
+   { type: 'paragraph', attrs: { textAlign: 'right' }, content: [{ type: 'text', text: 'Firma' }] },
+   { type: 'paragraph', attrs: { textAlign: 'justify' }, content: [{ type: 'text', text: 'Texto justificado' }] },
+  ] });
+  expect(out).toContain('\\begingroup\\raggedleft\nFirma\\par\\endgroup\n\nTexto justificado\n\n');
+ });
+});

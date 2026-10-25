@@ -24,7 +24,12 @@ export function nodeToLatex(node: DocNode, citationNumbers: Map<string, number> 
   const inner = (node.content || []).map(child => nodeToLatex(child, citationNumbers)).join('');
   switch (node.type) {
     case 'heading': return `\n\\${node.attrs?.level === 1 ? 'section*' : node.attrs?.level === 2 ? 'subsection*' : 'subsubsection*'}{${inner}}\n`;
-    case 'paragraph': return `${inner}\n\n`;
+    case 'paragraph': {
+      // LaTeX paragraphs are justified by default. Scope other alignments so
+      // they cannot change the following justified paragraph.
+      const alignment = { left: '\\raggedright', center: '\\centering', right: '\\raggedleft' }[node.attrs?.textAlign as 'left' | 'center' | 'right'];
+      return alignment ? `\\begingroup${alignment}\n${inner}\\par\\endgroup\n\n` : `${inner}\n\n`;
+    }
     case 'bulletList': return `\\begin{itemize}\n${inner}\\end{itemize}\n`;
     case 'orderedList': return `\\begin{enumerate}\n${inner}\\end{enumerate}\n`;
     case 'listItem': return `\\item ${inner}`;
