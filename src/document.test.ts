@@ -18,7 +18,7 @@ describe('LaTeX export', () => {
   expect(out).toContain('\\textbf{50\\% \\& a\\_b}'); expect(out).toContain('\\begin{equation}\n\\frac{a}{b}\n\\end{equation}'); expect(out).toContain('\\end{document}');
  });
  it('exports headings, lists and emphasis', () => {
-  expect(nodeToLatex({ type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Resumen' }] })).toContain('\\subsection*{Resumen}');
+  expect(nodeToLatex({ type: 'heading', attrs: { level: 2 }, content: [{ type: 'text', text: 'Resumen' }] })).toContain('\\section*{Resumen}');
   expect(nodeToLatex({ type: 'bulletList', content: [{ type: 'listItem', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Una idea' }] }] }] })).toContain('\\item Una idea');
  });
 });

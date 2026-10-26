@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview --host 0.0.0.0",
     "test": "vitest run src",
-    "test:e2e": "playwright test"
+    "test:e2e": "playwright test",
+    "test:latex": "node scripts/check-latex.mjs"
   },
   "dependencies": {
     "@fontsource/dm-sans": "^5.3.0",
@@ -16,6 +17,7 @@
     "@fontsource/literata": "^5.3.0",
     "@tiptap/extension-mathematics": "^3.0.0",
     "@tiptap/extension-placeholder": "^3.0.0",
+    "@tiptap/extension-table": "^3.32.0",
     "@tiptap/extension-text-align": "^3.0.0",
     "@tiptap/extension-underline": "^3.0.0",
     "@tiptap/react": "^3.0.0",
