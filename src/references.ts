@@ -1,6 +1,12 @@
 import type { DocNode } from './document';
 
-export type Reference = { id: string; url: string; title: string; authors: string; year: string };
+export type Person = { family?: string; given?: string; literal?: string };
+export type Reference = {
+  id: string; url: string; title: string; authors: string; year: string;
+  people?: Person[]; type?: string; journal?: string; journalAbbreviation?: string;
+  volume?: string; issue?: string; pages?: string; articleNumber?: string; publisher?: string;
+  issued?: number[]; doi?: string; source?: 'Crossref' | 'DataCite'; retrievedAt?: string;
+};
 
 /** Conservative identity: keep meaningful query parameters and path case. */
 export function normalizeReferenceLink(input: string): { id: string; url: string } {

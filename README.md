@@ -28,9 +28,9 @@ Las pruebas de navegador utilizan `/usr/bin/chromium`. En otra máquina, define 
 - Editor visual con títulos, listas, negrita, cursiva, subrayado y alineación izquierda, centrada, derecha o justificada. Usa el botón Justificar o Ctrl+Mayús+J; en pantallas pequeñas, el selector de alineación. La elección se guarda con el documento y se conserva al imprimir. La exportación LaTeX justifica por defecto y aplica las otras alineaciones por párrafo.
 - Matemáticas visuales con teclado MathLive, plantillas y edición al hacer clic. Las ecuaciones en bloque se muestran sin recuadro, centradas y numeradas automáticamente a la derecha; la numeración se recalcula al editar y se conserva al imprimir. Las fórmulas en línea no llevan número. La exportación usa el entorno `equation` para numeración nativa en LaTeX.
 - Pegado de texto con fórmulas delimitadas por `$$…$$`, `\[…\]`, `\(…\)` o `$…$`.
-- Biblioteca de referencias por documento, citas numéricas por primera aparición y bibliografía automática. La misma fuente reutiliza su número; eliminar citas renumera las restantes. Los enlaces normalizados y DOI detectan fuentes ya registradas.
+- Biblioteca de referencias por documento, búsqueda de metadatos por DOI y estilos APA 7, IEEE y Vancouver (NLM). En los estilos numéricos, la misma fuente reutiliza su número; eliminar citas renumera las restantes. APA usa autor-fecha y bibliografía alfabética. Los enlaces normalizados y DOI detectan fuentes ya registradas.
 - Exportación `.tex` con `article`, `amsmath`, `amssymb` y español; impresión/PDF mediante navegador.
-- Guardado automático en `localStorage`. No requiere claves ni servicios externos. Las fuentes se sirven localmente.
+- Guardado automático en `localStorage`. No requiere claves. La búsqueda por DOI consulta Crossref y DataCite; documentos y formato se procesan localmente. Las fuentes tipográficas se sirven localmente.
 - Diseño adaptable en marfil y verde bosque. Identidad visual en `public/texla-brand.png`.
 
 ## Límites de esta versión
@@ -53,8 +53,12 @@ La compilación usa la ruta base del repositorio, también para las fuentes de M
 
 ## Referencias y bibliografía
 
-Desde **Referencias** en la barra del editor, introduce el enlace o DOI, título, autoría y año. Puedes guardar una fuente sin citarla, insertar una cita en la posición actual o buscar y reutilizar fuentes de la biblioteca. La bibliografía al final del documento incluye únicamente las fuentes citadas, en orden de primera aparición. Si se elimina la última cita de una fuente, esta sale de la bibliografía pero permanece en la biblioteca. Deshacer restaura las citas y recalcula los números.
+Desde **Referencias**, pega un DOI y pulsa **Buscar datos por DOI**. Crossref y DataCite permiten recuperar metadatos sin API key ni IA. Revisa los campos, elige **APA 7**, **IEEE** o **Vancouver (NLM)** y guarda o inserta la cita. Puedes editar fuentes guardadas y reutilizarlas sin duplicados. Los datos ausentes se completan manualmente.
 
-Las citas guardan una identidad estable y sus datos, por lo que copiar y pegar entre documentos de Texla conserva la fuente. Los documentos anteriores siguen siendo compatibles. El archivo `.tex` incluye `\cite`, `thebibliography`, `\bibitem` y enlaces con `hyperref`; compilar dos veces en un motor LaTeX resuelve las referencias cruzadas. La impresión del navegador incluye citas y bibliografía.
+El estilo se guarda por documento y se aplica a citas, bibliografía, impresión y `.tex`. La bibliografía incluye solo fuentes citadas. Al eliminar la última cita de una fuente, esta desaparece de la bibliografía pero permanece en la biblioteca. Deshacer restaura las citas. Copiar y pegar citas entre documentos conserva sus datos; los documentos anteriores siguen siendo compatibles.
 
-La detección reconoce DOI escritos solos, con `doi:` o mediante `doi.org`/`dx.doi.org`. Para enlaces web, elimina fragmentos y parámetros conocidos de seguimiento, ordena los parámetros restantes y unifica HTTP/HTTPS para comparar. Conserva las rutas y parámetros que pueden identificar obras distintas. Un DOI y una página editorial con otra dirección pueden representar la misma obra sin que el sistema lo detecte. No se consulta la web, no se verifica la calidad de las fuentes y no se autocompletan sus metadatos. Esta versión usa citas numéricas; no incorpora estilos CSL/APA, importación desde Mendeley ni una biblioteca compartida en la nube.
+El formato usa **citeproc-js** y estilos del proyecto **Citation Style Language (CSL)**. La exportación incluye entradas ya formateadas y enlaces internos con `hyperref`; no requiere BibTeX. Se verifican artículos académicos por DOI. Las convenciones bibliográficas están en inglés y los títulos mantienen el idioma original; revisa los datos recuperados y los requisitos particulares de tu institución.
+
+La detección reconoce DOI solos, con `doi:` o enlaces de `doi.org`/`dx.doi.org`. Para enlaces web elimina parámetros de seguimiento y fragmentos, y conserva rutas y parámetros que distinguen obras. Una página editorial y un DOI pueden representar la misma obra sin que el sistema lo detecte. Los enlaces web comunes permiten entrada manual, sin búsqueda automática.
+
+Consulta [guías revisadas, procedencia de estilos, licencias, pruebas y límites](docs/references.md). No hay importación desde Mendeley ni biblioteca compartida en la nube.

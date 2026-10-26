@@ -36,10 +36,12 @@ describe('citation order and persistence', () => {
  });
  it('exports one bibliography entry per cited source, consistent numbers and escaped metadata', () => {
   const out = exportLatex('Tesis', doc({ type: 'paragraph', content: [citation(b), citation(a), citation(b)] }), [a, b]);
-  expect(out).toContain('\\cite{ref1}\\cite{ref2}\\cite{ref1}');
-  expect(out.match(/\\bibitem/g)).toHaveLength(2);
-  expect(out).toContain('\\bibitem{ref1} García \\& Pérez. Fuente B. 2026.');
-  expect(out).toContain('\\url{https://example.org/study?id=2}');
+  expect(out).toContain('\\hyperlink{ref1}{[1]}\\hyperlink{ref2}{[2]}\\hyperlink{ref1}{[1]}');
+  expect(out.match(/\\hypertarget/g)).toHaveLength(2);
+  expect(out).toContain('\\hypertarget{ref1}{}[1]');
+  expect(out).toContain('García \\& Pérez');
+  expect(out).toContain('Fuente B');
+  expect(out).toContain('https://example.org/study?id=2');
   expect(exportLatex('Vacío', doc(), [a, b])).not.toContain('thebibliography');
  });
  it('ignores malformed citation metadata', () => {

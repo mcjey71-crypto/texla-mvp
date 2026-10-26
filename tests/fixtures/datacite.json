@@ -1,0 +1,35 @@
+{
+  "data": {
+    "attributes": {
+      "doi": "10.5281/zenodo.3242077",
+      "types": {
+        "ris": "JOUR",
+        "bibtex": "article",
+        "citeproc": "article-journal",
+        "schemaOrg": "ScholarlyArticle",
+        "resourceType": "Journal article",
+        "resourceTypeGeneral": "Text"
+      },
+      "titles": [
+        {
+          "title": "Андроид-приложение для расчета углов ориентации самопилотируемого объекта при движении в условиях городской застройки"
+        }
+      ],
+      "creators": [
+        {
+          "name": "Домрачева Анна Борисовна",
+          "affiliation": [],
+          "nameIdentifiers": []
+        },
+        {
+          "name": "Цалкович Павел Александрович",
+          "affiliation": [],
+          "nameIdentifiers": []
+        }
+      ],
+      "publicationYear": 2019,
+      "container": {},
+      "publisher": "Zenodo"
+    }
+  }
+}

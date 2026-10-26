@@ -1,0 +1,15 @@
+Texla Docs — componentes bibliográficos
+
+Citation Style Language (CSL): https://citationstyles.org/
+Estilos y traducciones: CC BY-SA 3.0 Unported.
+Licencia: https://creativecommons.org/licenses/by-sa/3.0/
+Se conservan los autores, colaboradores y traductores en los XML originales.
+Fuentes y versiones: https://github.com/mcjey71-crypto/texla-mvp/blob/main/docs/references.md
+
+citeproc-js 2.4.63 — Copyright (c) 2009-2019 Frank Bennett.
+https://citeproc-js.readthedocs.io/
+Redistribuido sin cambios bajo la opción CPAL 1.0 ofrecida por su autor.
+Licencia: CPAL-1.0.txt (en este directorio).
+Aviso original: citeproc-NOTICE.txt (en este directorio).
+Código fuente completo del motor: citeproc-2.4.63.js (en este directorio).
+Sin garantía; véase el texto de licencia y el aviso original.

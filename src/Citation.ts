@@ -1,9 +1,11 @@
 import { Node, mergeAttributes } from '@tiptap/core';
 import { Plugin, PluginKey } from '@tiptap/pm/state';
 import { Decoration, DecorationSet } from '@tiptap/pm/view';
-import { validReference } from './references';
+import { formatReferences, type CitationStyle } from './citationStyles';
+import { citedReferences, type Reference, validReference } from './references';
 
-export const Citation = Node.create({
+export const Citation = Node.create<{ getStyle: () => CitationStyle; getLibrary: () => Reference[] }>({
+  addOptions() { return { getStyle: () => 'ieee', getLibrary: () => [] }; },
   name: 'citation', group: 'inline', inline: true, atom: true, selectable: true,
   addAttributes() {
     return { reference: { default: null, rendered: false } };
@@ -24,11 +26,14 @@ export const Citation = Node.create({
   },
   renderText({ node }) { return `[${node.attrs.reference?.title || 'Referencia'}]`; },
   addProseMirrorPlugins() {
+    const options = this.options;
     return [new Plugin({
       key: new PluginKey('citationNumbering'),
       props: {
         decorations(state) {
-          const numbers = new Map<string, number>(); const decorations: Decoration[] = [];
+          const references = citedReferences(state.doc.toJSON(), options.getLibrary());
+          const formatted = formatReferences(references, options.getStyle());
+          const numbers = new Map(references.map((r, i) => [r.id, i + 1])); const decorations: Decoration[] = [];
           state.doc.descendants((node, pos) => {
             if (node.type.name !== 'citation') return;
             const ref = node.attrs.reference;
@@ -37,7 +42,8 @@ export const Citation = Node.create({
             const number = numbers.get(ref.id)!;
             decorations.push(Decoration.node(pos, pos + node.nodeSize, {
               'data-citation-number': String(number),
-              'aria-label': `Referencia ${number}: ${ref.title}`,
+              'data-citation-label': formatted.citations.get(ref.id) || '[?]',
+              'aria-label': `${formatted.citations.get(ref.id)}: ${ref.title}`,
               role: 'doc-biblioref',
             }));
           });

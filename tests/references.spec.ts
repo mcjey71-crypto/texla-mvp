@@ -32,7 +32,7 @@ test('deduplicates sources, renumbers citations and bibliography after deleting 
  await expect(page.getByText('Esta fuente ya existe')).toBeVisible();
  await page.getByRole('button', { name: 'Citar fuente existente' }).click();
  await expect.poll(() => citationNumbers(page)).toEqual(['1', '2', '1']);
- await expect(page.locator('.bibliography li')).toHaveCount(2);
+ await expect(page.locator('.bibliography .csl-entry')).toHaveCount(2);
  expect(await page.locator('.tiptap .citation').first().evaluate(el => getComputedStyle(el, '::after').content)).toBe('"[1]"');
  // Delete the complete first paragraph, as when revising a thesis.
  await page.waitForTimeout(600);
@@ -44,11 +44,11 @@ test('deduplicates sources, renumbers citations and bibliography after deleting 
  });
  await page.keyboard.press('Backspace');
  await expect.poll(() => citationNumbers(page)).toEqual(['1', '2']);
- await expect(page.locator('.bibliography li').first()).toContainText('Estudio Beta');
- await expect(page.locator('.bibliography li').last()).toContainText('Estudio Alpha');
+ await expect(page.locator('.bibliography .csl-entry').first()).toContainText('Estudio Beta');
+ await expect(page.locator('.bibliography .csl-entry').last()).toContainText('Estudio Alpha');
  await page.waitForTimeout(600); await selectCitation(page, 1); await page.keyboard.press('Backspace');
  await expect.poll(() => citationNumbers(page)).toEqual(['1']);
- await expect(page.locator('.bibliography li')).toHaveCount(1);
+ await expect(page.locator('.bibliography .csl-entry')).toHaveCount(1);
  await page.getByRole('button', { name: 'Referencias', exact: true }).click();
  await expect(page.locator('.reference-entry')).toHaveCount(2);
  await expect(page.locator('.reference-entry').filter({ hasText: 'Estudio Alpha' })).toContainText('Sin citar');
@@ -60,11 +60,11 @@ test('deduplicates sources, renumbers citations and bibliography after deleting 
  expect(await page.locator('.tiptap .citation').last().evaluate(el => getComputedStyle(el, '::after').content)).toBe('"[2]"');
  await page.emulateMedia({ media: 'screen' });
  await page.getByRole('button', { name: 'LaTeX AUTO' }).click();
- await expect(page.locator('.latex-panel pre')).toContainText('\\bibitem{ref1} Estudio Beta');
+ await expect(page.locator('.latex-panel pre')).toContainText('\\hypertarget{ref1}{}[1]');
  await page.waitForTimeout(600); await page.reload();
  await page.getByRole('button', { name: 'Tesis con fuentes Guardado en este dispositivo' }).click();
  await expect.poll(() => citationNumbers(page)).toEqual(['1', '2']);
- await expect(page.locator('.bibliography li')).toHaveCount(2);
+ await expect(page.locator('.bibliography .csl-entry')).toHaveCount(2);
 });
 test('copies citations across documents with metadata; bibliography starts at one', async ({ page, context }) => {
  await context.grantPermissions(['clipboard-read', 'clipboard-write']); await page.goto('/');

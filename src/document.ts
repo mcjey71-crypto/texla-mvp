@@ -1,3 +1,4 @@
+import { formatReferences, type CitationStyle } from './citationStyles';
 import { citedReferences, type Reference } from './references';
 export type DocNode = { type: string; text?: string; attrs?: Record<string, any>; marks?: { type: string; attrs?: Record<string, any> }[]; content?: DocNode[] };
 // ChatGPT, Claude and other tools commonly emit these four math delimiters.
@@ -16,12 +17,12 @@ export function parseMathText(text: string): DocNode[] {
   appendText(text.slice(end)); flush(); return blocks.length ? blocks : [{ type: 'paragraph' }];
 }
 const escapeTex = (s: string) => s.replace(/[\\{}$&#%_~^]/g, c => ({ '\\': '\\textbackslash{}', '{': '\\{', '}': '\\}', '$': '\\$', '&': '\\&', '#': '\\#', '%': '\\%', '_': '\\_', '~': '\\textasciitilde{}', '^': '\\textasciicircum{}' }[c]!));
-export function nodeToLatex(node: DocNode, citationNumbers: Map<string, number> = new Map()): string {
+export function nodeToLatex(node: DocNode, citationNumbers: Map<string, number> = new Map(), citationLabels?: Map<string, string>): string {
   if (node.type === 'text') { let text = escapeTex(node.text || ''); for (const mark of node.marks || []) { if (mark.type === 'bold') text = `\\textbf{${text}}`; if (mark.type === 'italic') text = `\\textit{${text}}`; if (mark.type === 'underline') text = `\\underline{${text}}`; } return text; }
-  if (node.type === 'citation') { const number = citationNumbers.get(node.attrs?.reference?.id); return number ? `\\cite{ref${number}}` : '[referencia no disponible]'; }
+  if (node.type === 'citation') { const number = citationNumbers.get(node.attrs?.reference?.id); return number ? citationLabels ? `\\hyperlink{ref${number}}{${escapeTex(citationLabels.get(node.attrs?.reference?.id) || '[?]')}}` : `\\cite{ref${number}}` : '[referencia no disponible]'; }
   if (node.type === 'inlineMath') return `$${node.attrs?.latex || ''}$`;
   if (node.type === 'blockMath') return `\n\\begin{equation}\n${node.attrs?.latex || ''}\n\\end{equation}\n`;
-  const inner = (node.content || []).map(child => nodeToLatex(child, citationNumbers)).join('');
+  const inner = (node.content || []).map(child => nodeToLatex(child, citationNumbers, citationLabels)).join('');
   switch (node.type) {
     case 'heading': return `\n\\${node.attrs?.level === 1 ? 'section*' : node.attrs?.level === 2 ? 'subsection*' : 'subsubsection*'}{${inner}}\n`;
     case 'paragraph': {
@@ -39,15 +40,15 @@ export function nodeToLatex(node: DocNode, citationNumbers: Map<string, number> 
     default: return inner;
   }
 }
-export function exportLatex(title: string, content: DocNode, library: Reference[] = []): string {
+export function exportLatex(title: string, content: DocNode, library: Reference[] = [], style: CitationStyle = 'ieee'): string {
   const references = citedReferences(content, library);
   const numbers = new Map(references.map((ref, index) => [ref.id, index + 1]));
-  const bibliography = references.length ? `\n\\begin{thebibliography}{${references.length}}\n${references.map((ref, i) => {
-    const details = [ref.authors, ref.title, ref.year].filter(Boolean).map(escapeTex).join('. ');
-    const url = ref.url.replace(/[{}\\]/g, char => encodeURIComponent(char));
-    return `\\bibitem{ref${i + 1}} ${details}. \\url{${url}}`;
-  }).join('\n')}\n\\end{thebibliography}\n` : '';
-  return `\\documentclass[11pt,a4paper]{article}\n\\usepackage[utf8]{inputenc}\n\\usepackage[T1]{fontenc}\n\\usepackage[spanish]{babel}\n\\usepackage{amsmath,amssymb}\n\\usepackage[hidelinks]{hyperref}\n\\usepackage[margin=2.5cm]{geometry}\n\\title{${escapeTex(title)}}\n\\date{}\n\\begin{document}\n${nodeToLatex(content, numbers)}${bibliography}\n\\end{document}\n`;
+  const formatted = formatReferences(references, style);
+  const bibliography = references.length ? `\n\\clearpage\n${style === 'apa' ? '\\begin{center}\\textbf{Referencias}\\end{center}' : '\\section*{Referencias}'}\n\\begingroup\n\\setlength{\\parindent}{0pt}\n${style === 'apa' ? '\\begin{spacing}{2}\n' : ''}${formatted.latexEntries.map((entry, i) => {
+    const number = numbers.get(formatted.ids[i]);
+    return `${style === 'apa' ? '\\hangindent=1.27cm\\hangafter=1 ' : ''}\\hypertarget{ref${number}}{}${entry}\\par${style === 'apa' ? '' : '\\medskip'}`;
+  }).join('\n')}\n${style === 'apa' ? '\\end{spacing}\n' : ''}\\endgroup\n` : '';
+  return `\\documentclass[11pt,a4paper]{article}\n\\usepackage[utf8]{inputenc}\n\\usepackage[T1]{fontenc}\n\\usepackage[spanish]{babel}\n\\usepackage{amsmath,amssymb}\n\\usepackage[hidelinks]{hyperref}\n\\usepackage{setspace}\n\\usepackage[margin=2.5cm]{geometry}\n\\title{${escapeTex(title)}}\n\\date{}\n\\begin{document}\n${nodeToLatex(content, numbers, formatted.citations)}${bibliography}\n\\end{document}\n`;
 }
 export const initialContent: DocNode = { type: 'doc', content: [
  { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'El lenguaje del universo' }] },
