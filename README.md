@@ -18,6 +18,8 @@ npm test
 npm run build
 # El servidor de desarrollo se inicia automáticamente si hace falta:
 npm run test:e2e
+npm run collab:check
+npm run test:collaboration
 # Opcional: requiere TeX Live con español y los paquetes del preámbulo
 npm run test:latex
 ```
@@ -37,12 +39,13 @@ Las pruebas de navegador utilizan `/usr/bin/chromium`. En otra máquina, define 
 - Pegado de texto con fórmulas delimitadas por `$$…$$`, `\[…\]`, `\(…\)` o `$…$`.
 - Biblioteca de referencias por documento, búsqueda de metadatos por DOI y estilos APA 7, IEEE y Vancouver (NLM). En los estilos numéricos, la misma fuente reutiliza su número; eliminar citas renumera las restantes. APA usa autor-fecha y bibliografía alfabética. Los enlaces normalizados y DOI detectan fuentes ya registradas.
 - Exportación `.tex` con `article`, `amsmath`, `amssymb` y español; impresión/PDF mediante navegador.
-- Guardado automático en `localStorage`. No requiere claves. La búsqueda por DOI consulta Crossref y DataCite; documentos y formato se procesan localmente. Las fuentes tipográficas se sirven localmente.
+- Compartir por enlace con edición simultánea, cursores, guardado en servidor y reconexión. Requiere activar el servidor Cloudflare incluido; consulta [la guía de colaboración](docs/collaboration.md).
+- Guardado automático en `localStorage`. No requiere claves. La búsqueda por DOI consulta Crossref y DataCite; los documentos privados se procesan localmente y solo se envían al servidor al compartirlos. Las fuentes tipográficas se sirven localmente.
 - Diseño adaptable en marfil y verde bosque. Identidad visual en `public/texla-brand.png`.
 
 ## Límites de esta versión
 
-Los documentos se guardan únicamente en este navegador y origen. Borrar sus datos elimina los documentos; exporta una copia para conservarlos. No hay cuentas, backend, sincronización, colaboración ni pagos. La aplicación convierte fórmulas compatibles con KaTeX; no interpreta documentos LaTeX completos ni OCR de imágenes. El pegado matemático conserva texto y fórmulas, pero no interpreta todo Markdown. La exportación conserva estructura, tablas, ecuaciones y formato de página; tipografía del editor y zoom son preferencias de visualización. El índice visual se actualiza con los encabezados, pero solo el compilador TeX calcula sus números de página. PDF usa el motor de impresión del navegador, no un compilador TeX. La compilación de ejemplos se comprueba con `npm run test:latex`; requiere `pdflatex`, español de Babel y los paquetes del preámbulo. El índice requiere dos pasadas. Esto no añade un compilador al sitio web.
+Los documentos privados se guardan en este navegador y origen; los compartidos se sincronizan con el servidor configurado. Borrar los datos del navegador elimina las copias locales y los permisos recordados; descarga copias para conservar el trabajo. No hay cuentas, permisos por correo ni pagos. La colaboración usa enlaces con permiso de edición y necesita una cuenta gratuita de Cloudflare para activar el backend incluido. La aplicación convierte fórmulas compatibles con KaTeX; no interpreta documentos LaTeX completos ni OCR de imágenes. El pegado matemático conserva texto y fórmulas, pero no interpreta todo Markdown. La exportación conserva estructura, tablas, ecuaciones y formato de página; tipografía del editor y zoom son preferencias de visualización. El índice visual se actualiza con los encabezados, pero solo el compilador TeX calcula sus números de página. PDF usa el motor de impresión del navegador, no un compilador TeX. La compilación de ejemplos se comprueba con `npm run test:latex`; requiere `pdflatex`, español de Babel y los paquetes del preámbulo. El índice requiere dos pasadas. Esto no añade un compilador al sitio web.
 
 ## Entorno en la nube
 
@@ -56,7 +59,7 @@ GitHub Pages ofrece alojamiento gratuito para repositorios públicos. El reposit
 2. El workflow `.github/workflows/pages.yml` compila, prueba y publica en cada push a `main`. Si el primer intento ocurrió antes de activar Pages, abre `Actions → Publish Texla Docs to GitHub Pages → Run workflow`.
 3. La URL prevista para este repositorio es `https://mcjey71-crypto.github.io/texla-mvp/`. Úsala cuando el workflow de publicación finalice correctamente.
 
-La compilación usa la ruta base del repositorio, también para las fuentes de MathLive. Para reproducirla: `npm run build -- --base=/texla-mvp/`. La aplicación no pide datos de pago ni llama a APIs de IA. Cuentas, documentos sincronizados y colaboración requerirían un backend adicional.
+La compilación usa la ruta base del repositorio, también para las fuentes de MathLive. Para reproducirla: `npm run build -- --base=/texla-mvp/`. La aplicación no pide datos de pago ni llama a APIs de IA. El backend colaborativo se despliega por separado con el workflow **Publish collaboration server**. Su activación y sus cuotas se explican en [docs/collaboration.md](docs/collaboration.md).
 
 ## Referencias y bibliografía
 
@@ -68,7 +71,7 @@ El formato usa **citeproc-js** y estilos del proyecto **Citation Style Language 
 
 La detección reconoce DOI solos, con `doi:` o enlaces de `doi.org`/`dx.doi.org`. Para enlaces web elimina parámetros de seguimiento y fragmentos, y conserva rutas y parámetros que distinguen obras. Una página editorial y un DOI pueden representar la misma obra sin que el sistema lo detecte. Los enlaces web comunes permiten entrada manual, sin búsqueda automática.
 
-Consulta [guías revisadas, procedencia de estilos, licencias, pruebas y límites](docs/references.md). No hay importación desde Mendeley ni biblioteca compartida en la nube.
+Consulta [guías revisadas, procedencia de estilos, licencias, pruebas y límites](docs/references.md). No hay importación desde Mendeley. Al compartir un documento se sincroniza su biblioteca de referencias; no hay biblioteca global de una cuenta.
 
 ## Mejoras para documentos formales
 

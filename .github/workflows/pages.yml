@@ -25,7 +25,10 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm test
+      - run: npm run collab:check
       - name: Build for repository Pages URL
+        env:
+          VITE_COLLABORATION_URL: ${{ vars.VITE_COLLABORATION_URL }}
         run: npm run build -- --base="/${GITHUB_REPOSITORY#*/}/"
       - uses: actions/upload-pages-artifact@v3
         with:
