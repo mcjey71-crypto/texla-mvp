@@ -9,7 +9,7 @@ import { resolveStyle } from './citationStyles';
 import type { SharedSession } from './SharedSession';
 
 const SERVER_KEY = 'texla-collaboration-server';
-export function configuredServer() { try { return localStorage.getItem(SERVER_KEY) || (import.meta.env.VITE_COLLABORATION_URL as string | undefined) || ''; } catch { return ''; } }
+export function configuredServer() { const fallback = (import.meta.env.VITE_COLLABORATION_URL as string | undefined) || ''; try { return localStorage.getItem(SERVER_KEY) || fallback; } catch { return fallback; } }
 export function participantName() { try { return localStorage.getItem('texla-participant-name') || 'Invitado'; } catch { return 'Invitado'; } }
 async function request(server: string, path: string, init?: RequestInit) {
   const response = await fetch(`${server}${path}`, { ...init, signal: AbortSignal.timeout(20000), credentials: 'omit', referrerPolicy: 'no-referrer' });
@@ -18,6 +18,7 @@ async function request(server: string, path: string, init?: RequestInit) {
 
 export default function ShareDocument({ document, editor, session, onCreated, onStopped }: { document: SavedDocument; editor: Editor; session: SharedSession | null; onCreated: (doc: SavedDocument) => void; onStopped: () => void }) {
   const [server, setServer] = useState(configuredServer);
+  const [configureConnection, setConfigureConnection] = useState(() => !configuredServer());
   const [name, setName] = useState(participantName);
   const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [copied, setCopied] = useState(false); const [confirmStop, setConfirmStop] = useState(false);
   const [createdAccess, setCreatedAccess] = useState<SharedAccess | null>(null);
@@ -63,7 +64,8 @@ export default function ShareDocument({ document, editor, session, onCreated, on
       {access.ownerToken && <div className="stop-sharing">{confirmStop ? <><p>Se desactivará el enlace y se eliminará la copia del servidor. Los participantes conservarán las copias que ya tengan. Tu documento seguirá disponible aquí.</p><button disabled={busy} onClick={() => void stop()}>Confirmar: dejar de compartir</button><button disabled={busy} onClick={() => setConfirmStop(false)}>Cancelar</button></> : <button disabled={busy} onClick={() => setConfirmStop(true)}>Dejar de compartir</button>}<p className="privacy-note">Este navegador conserva el permiso para desactivar el enlace. Las copias descargadas no incluyen permisos de acceso.</p></div>}
     </> : <>
       <div className="share-permission"><strong>Se creará una versión compartida.</strong><p>Tu documento local original se conservará. Los cambios posteriores se harán en la versión compartida.</p></div>
-      <label className="field-label">Servidor de colaboración<input type="url" value={server} onChange={e => setServer(e.target.value)} placeholder="https://texla-collaboration.tu-cuenta.workers.dev"/></label>
+      {!configureConnection && <button className="text-button" onClick={() => setConfigureConnection(true)}>Configuración de la conexión</button>}
+      {configureConnection && <label className="field-label">Servidor de colaboración<input type="url" value={server} onChange={e => setServer(e.target.value)} placeholder="https://texla-collaboration.tu-cuenta.workers.dev"/></label>}
       {!server && <p className="setup-note">La colaboración necesita activar el servidor gratuito de Texla en Cloudflare. El administrador configura esta dirección una sola vez; quienes reciban un enlace no necesitan hacerlo. <a href="https://github.com/mcjey71-crypto/texla-mvp/blob/main/docs/collaboration.md" target="_blank" rel="noreferrer">Guía de activación</a>.</p>}
       <p className="privacy-note">Al crear el enlace, se enviará este documento y su bibliografía al servidor indicado.</p>
       <button className="primary-button" disabled={busy || !server.trim()} onClick={() => void create()}>{busy ? 'Preparando documento…' : 'Crear enlace de edición'}</button>

@@ -2,6 +2,10 @@
 
 La implementación permite que varias personas escriban en el mismo documento, con nombres y cursores, guardado en el servidor y recuperación de cambios después de una desconexión. Incluye texto, tablas, ecuaciones, citas, biblioteca de referencias, estilo bibliográfico y formato del documento.
 
+La publicación de este repositorio ya utiliza `https://texla-collaboration.mcjey71.workers.dev` como servidor predeterminado. En la web, abre **Compartir → Crear enlace de edición**; no necesitas introducir la dirección. La configuración se puede revisar con **Configuración de la conexión**. Los servidores guardados anteriormente en un navegador se conservan. La variable de GitHub `VITE_COLLABORATION_URL` permite sustituir el servidor predeterminado.
+
+Antes de cada publicación, GitHub Actions comprueba la respuesta `/health`, la versión del protocolo y los permisos CORS para el origen de Texla. Esta comprobación no crea documentos ni envía contenido de usuarios.
+
 **La página de GitHub Pages y el servidor son dos despliegues distintos.** Publicar la página no activa el servidor. Hace falta una cuenta de Cloudflare y desplegar el Worker una vez. No hay ningún servidor público de demostración ni se envían documentos privados al abrir la aplicación.
 
 ## Activación gratuita desde GitHub
