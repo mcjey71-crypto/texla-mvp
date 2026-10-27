@@ -41,9 +41,9 @@ En [Settings → Secrets and variables → Actions → Variables](https://github
 | Variable | Valor |
 | --- | --- |
 | `VITE_SUPABASE_URL` | La Project URL real, normalmente `https://identificador.supabase.co` |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | La clave pública completa que comienza por `sb_publishable_` |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | La clave pública completa `sb_publishable_…`, o la clave JWT antigua con rol `anon` |
 
-Los valores se incorporan al compilar. Después de cambiarlos, ejecuta [Publish Texla Docs to GitHub Pages](https://github.com/mcjey71-crypto/texla-mvp/actions/workflows/pages.yml) sobre `main`. La publicación comprueba que la configuración usa una clave publicable y que Supabase Auth responde; informa si Google todavía no está habilitado. No muestra la clave en los registros ni ejecuta migraciones.
+Los valores se incorporan al compilar. Después de cambiarlos, ejecuta [Publish Texla Docs to GitHub Pages](https://github.com/mcjey71-crypto/texla-mvp/actions/workflows/pages.yml) sobre `main`. La publicación comprueba que la configuración usa una clave publicable o anon y que Supabase Auth responde; informa si Google todavía no está habilitado. No muestra la clave en los registros ni ejecuta migraciones.
 
 Nunca uses una contraseña, una clave `service_role`, una `sb_secret_` ni un token personal en variables `VITE_*`. Aunque se guardase como secret de GitHub, un valor utilizado por Vite quedaría expuesto en el navegador. La clave publicable permite iniciar solicitudes; la autenticación y las reglas RLS determinan qué datos puede consultar o modificar cada usuario.
 

@@ -9,6 +9,9 @@ describe('account configuration and document payloads', () => {
     for (const key of ['sb_secret_private', 'service_role', 'eyJhbGciOiJIUzI1NiJ9', 'Pegue su clave']) expect(() => publicConfiguration('https://project.supabase.co', key)).toThrow();
     expect(() => publicConfiguration('http://project.supabase.co', 'sb_publishable_example')).toThrow();
     expect(() => publicConfiguration('https://project.supabase.co', '')).toThrow();
+    const jwt = (role: string) => `${btoa('{"alg":"HS256"}')}.${btoa(JSON.stringify({iss:'supabase',role})).replace(/=+$/,'')}.signature`;
+    expect(publicConfiguration('https://project.supabase.co',jwt('anon'))).not.toBeNull();
+    expect(() => publicConfiguration('https://project.supabase.co',jwt('service_role'))).toThrow();
   });
   it('never uploads sharing capabilities or cloud account metadata', () => {
     const payload = cloudPayload({ id:'local', title:'Tesis', updated:1, content:{type:'doc',content:[{type:'paragraph'}]}, shared:{server:'https://example.com',room:'room',token:'private-edit-token',ownerToken:'private-owner-token'},cloud:{ownerId:'private-account',revision:5,dirty:true} });

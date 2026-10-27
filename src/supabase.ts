@@ -1,11 +1,13 @@
 import { createClient, type Session } from '@supabase/supabase-js';
+import { isPublicSupabaseKey } from '../shared/supabase-public-key.js';
 
 export function publicConfiguration(url: string | undefined, key: string | undefined) {
+  url = url?.trim(); key = key?.trim();
   if (!url && !key) return null;
   if (!url || !key) throw new Error('Falta completar la configuración de las cuentas.');
   const endpoint = new URL(url);
   if (endpoint.protocol !== 'https:' || endpoint.username || endpoint.password || endpoint.pathname !== '/' || endpoint.search || endpoint.hash) throw new Error('La dirección del servicio de cuentas no es válida.');
-  if (!/^sb_publishable_[A-Za-z0-9_-]+$/.test(key)) throw new Error('La configuración necesita una clave pública sb_publishable_.');
+  if (!isPublicSupabaseKey(key)) throw new Error('La configuración necesita una clave pública sb_publishable_ o una clave anon válida.');
   return { url: endpoint.origin, key };
 }
 let configuration: ReturnType<typeof publicConfiguration> = null;
