@@ -36,11 +36,12 @@ Para acceso por correo, habilita Email. Texla envía enlaces de entrada sin cont
 
 ## 4. Variables públicas de la página
 
-En [Settings → Secrets and variables → Actions → Variables](https://github.com/mcjey71-crypto/texla-mvp/settings/variables/actions):
+La dirección pública de producción está fijada en [pages.yml](../.github/workflows/pages.yml): `https://ciesoqrffrdofyekrvck.supabase.co`. Este valor sustituye la variable anterior `VITE_SUPABASE_URL` de GitHub, que contenía una dirección inválida. Para cambiar de proyecto, actualiza esa línea del workflow y la clave pública correspondiente.
+
+En [Settings → Secrets and variables → Actions → Variables](https://github.com/mcjey71-crypto/texla-mvp/settings/variables/actions), configura la clave:
 
 | Variable | Valor |
 | --- | --- |
-| `VITE_SUPABASE_URL` | La Project URL real, normalmente `https://identificador.supabase.co` |
 | `VITE_SUPABASE_PUBLISHABLE_KEY` | La clave pública completa `sb_publishable_…`, o la clave JWT antigua con rol `anon` |
 
 Los valores se incorporan al compilar. Después de cambiarlos, ejecuta [Publish Texla Docs to GitHub Pages](https://github.com/mcjey71-crypto/texla-mvp/actions/workflows/pages.yml) sobre `main`. La publicación comprueba que la configuración usa una clave publicable o anon y que Supabase Auth responde; informa si Google todavía no está habilitado. No muestra la clave en los registros ni ejecuta migraciones.
