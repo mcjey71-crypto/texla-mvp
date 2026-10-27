@@ -56,3 +56,12 @@ test('missing schema shows an activation message and never claims cloud persiste
 test('cloud deletion keeps the open device copy and works on mobile',async({page,context})=>{
   await setup(context,alice);await page.goto('/');await create(page,'Documento descartable');await page.setViewportSize({width:390,height:844});await page.getByRole('button',{name:'Mi cuenta',exact:true}).click();await page.getByRole('button',{name:'Eliminar de la nube: Documento descartable'}).click();await page.getByRole('button',{name:'Confirmar eliminación'}).click();await expect(page.locator('.account-library')).not.toContainText('Documento descartable');await page.getByRole('button',{name:'Cerrar',exact:true}).click();await expect(page.locator('.tiptap')).toContainText('Contenido privado de la cuenta.');expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);expect(rows.size).toBe(0);
 });
+test('import uploads only after review and honors the local-only choice and cloud size limit',async({page,context})=>{
+  await setup(context,alice);await page.goto('/');
+  const open=()=>page.locator('.document-tools').getByRole('button',{name:'Importar documento'}).click();
+  const convert=async(name:string,content:string)=>{await page.getByLabel('Archivo para importar').setInputFiles({name,mimeType:'text/plain',buffer:Buffer.from(content)});await page.getByRole('button',{name:'Convertir documento',exact:true}).click();await expect(page.getByText('Conversión preparada',{exact:true})).toBeVisible();};
+  await open();await convert('importado.txt','Investigación privada importada.');expect(rows.size).toBe(0);
+  await expect(page.getByLabel('Guardar también en mi cuenta')).toBeChecked();await page.getByRole('button',{name:'Crear documento editable'}).click();await expect(page.locator('.save-status')).toContainText('Guardado en tu cuenta');expect(rows.size).toBe(1);
+  await open();await convert('local.txt','Contenido solo para este navegador.');await page.getByLabel('Guardar también en mi cuenta').uncheck();await page.getByRole('button',{name:'Crear documento editable'}).click();await expect(page.locator('.save-status')).toContainText('Guardado en este navegador');expect(rows.size).toBe(1);
+  await open();await convert('extenso.txt','é'.repeat(550000));await expect(page.getByLabel('Guardar también en mi cuenta')).toBeDisabled();await expect(page.locator('.import-limit')).toContainText('Supera 1 MiB');expect(rows.size).toBe(1);
+});

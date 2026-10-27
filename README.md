@@ -83,3 +83,7 @@ Consulta [guías revisadas, procedencia de estilos, licencias, pruebas y límite
 La barra **Tabla · Índice automático · Salto de página · Buscar y reemplazar · Formato del documento · Copias editables** reúne las nuevas funciones. Usa **Plantillas** para empezar una tesis, artículo o informe. Las plantillas son puntos de partida, no formatos oficiales de instituciones.
 
 Consulta la [investigación de Overleaf, LyX y TeXstudio, funciones incorporadas y límites](docs/editor-research.md).
+
+## Importación de documentos
+
+Usa **Importar documento** para convertir Word, PDF (incluidos escaneados con OCR opcional), ODT, Markdown, TXT, HTML, LaTeX y copias de Texla en un documento editable. La conversión se realiza en el navegador y permite revisar el resultado antes de guardarlo. Consulta [formatos, límites y funcionamiento del OCR](docs/importing.md).
