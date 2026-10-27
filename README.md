@@ -61,6 +61,10 @@ GitHub Pages ofrece alojamiento gratuito para repositorios públicos. El reposit
 
 La compilación usa la ruta base del repositorio, también para las fuentes de MathLive. Para reproducirla: `npm run build -- --base=/texla-mvp/`. La aplicación no pide datos de pago ni llama a APIs de IA. El backend colaborativo se despliega por separado con el workflow **Publish collaboration server**. Su activación y sus cuotas se explican en [docs/collaboration.md](docs/collaboration.md).
 
+## Configuración de Supabase
+
+La configuración inicial para futuras cuentas de usuario se describe en [Supabase: variables públicas y pasos pendientes](docs/supabase.md). El workflow acepta `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY`; el inicio de sesión y los permisos por cuenta aún no están implementados.
+
 ## Referencias y bibliografía
 
 Desde **Referencias**, pega un DOI y pulsa **Buscar datos por DOI**. Crossref y DataCite permiten recuperar metadatos sin API key ni IA. Revisa los campos, elige **APA 7**, **IEEE** o **Vancouver (NLM)** y guarda o inserta la cita. Puedes editar fuentes guardadas y reutilizarlas sin duplicados. Los datos ausentes se completan manualmente.

@@ -16,6 +16,8 @@ concurrency:
 
 env:
   VITE_COLLABORATION_URL: ${{ vars.VITE_COLLABORATION_URL || 'https://texla-collaboration.mcjey71.workers.dev' }}
+  VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
+  VITE_SUPABASE_PUBLISHABLE_KEY: ${{ vars.VITE_SUPABASE_PUBLISHABLE_KEY }}
 
 jobs:
   build:
