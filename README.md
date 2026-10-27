@@ -20,6 +20,7 @@ npm run build
 npm run test:e2e
 npm run collab:check
 npm run test:collaboration
+npm run test:accounts
 # Opcional: requiere TeX Live con español y los paquetes del preámbulo
 npm run test:latex
 ```
@@ -40,12 +41,12 @@ Las pruebas de navegador utilizan `/usr/bin/chromium`. En otra máquina, define 
 - Biblioteca de referencias por documento, búsqueda de metadatos por DOI y estilos APA 7, IEEE y Vancouver (NLM). En los estilos numéricos, la misma fuente reutiliza su número; eliminar citas renumera las restantes. APA usa autor-fecha y bibliografía alfabética. Los enlaces normalizados y DOI detectan fuentes ya registradas.
 - Exportación `.tex` con `article`, `amsmath`, `amssymb` y español; impresión/PDF mediante navegador.
 - Compartir por enlace con edición simultánea, cursores, guardado en servidor y reconexión. Requiere activar el servidor Cloudflare incluido; consulta [la guía de colaboración](docs/collaboration.md).
-- Guardado automático en `localStorage`. No requiere claves. La búsqueda por DOI consulta Crossref y DataCite; los documentos privados se procesan localmente y solo se envían al servidor al compartirlos. Las fuentes tipográficas se sirven localmente.
+- Guardado local para documentos sin cuenta y copias de recuperación. Con sesión iniciada, los nuevos documentos privados se guardan también en Supabase; al compartir, se crea una versión colaborativa en Cloudflare. La búsqueda por DOI consulta Crossref y DataCite sin clave de API. Las fuentes tipográficas se sirven localmente.
 - Diseño adaptable en marfil y verde bosque. Identidad visual en `public/texla-brand.png`.
 
 ## Límites de esta versión
 
-Los documentos privados se guardan en este navegador y origen; los compartidos se sincronizan con el servidor configurado. Borrar los datos del navegador elimina las copias locales y los permisos recordados; descarga copias para conservar el trabajo. No hay cuentas, permisos por correo ni pagos. La colaboración usa enlaces con permiso de edición y necesita una cuenta gratuita de Cloudflare para activar el backend incluido. La aplicación convierte fórmulas compatibles con KaTeX; no interpreta documentos LaTeX completos ni OCR de imágenes. El pegado matemático conserva texto y fórmulas, pero no interpreta todo Markdown. La exportación conserva estructura, tablas, ecuaciones y formato de página; tipografía del editor y zoom son preferencias de visualización. El índice visual se actualiza con los encabezados, pero solo el compilador TeX calcula sus números de página. PDF usa el motor de impresión del navegador, no un compilador TeX. La compilación de ejemplos se comprueba con `npm run test:latex`; requiere `pdflatex`, español de Babel y los paquetes del preámbulo. El índice requiere dos pasadas. Esto no añade un compilador al sitio web.
+Los documentos sin cuenta se guardan en este navegador y origen; los privados de una cuenta se guardan en Supabase y los compartidos se sincronizan con Cloudflare. Borrar los datos del navegador elimina las copias locales y los permisos recordados; descarga copias para conservar el trabajo. Hay cuentas con Google/correo y una biblioteca privada mediante Supabase, después de activar las tablas y proveedores. No hay invitaciones por correo a documentos compartidos ni pagos. La colaboración usa enlaces con permiso de edición y necesita una cuenta gratuita de Cloudflare para activar el backend incluido. La aplicación convierte fórmulas compatibles con KaTeX; no interpreta documentos LaTeX completos ni OCR de imágenes. El pegado matemático conserva texto y fórmulas, pero no interpreta todo Markdown. La exportación conserva estructura, tablas, ecuaciones y formato de página; tipografía del editor y zoom son preferencias de visualización. El índice visual se actualiza con los encabezados, pero solo el compilador TeX calcula sus números de página. PDF usa el motor de impresión del navegador, no un compilador TeX. La compilación de ejemplos se comprueba con `npm run test:latex`; requiere `pdflatex`, español de Babel y los paquetes del preámbulo. El índice requiere dos pasadas. Esto no añade un compilador al sitio web.
 
 ## Entorno en la nube
 
@@ -63,7 +64,7 @@ La compilación usa la ruta base del repositorio, también para las fuentes de M
 
 ## Configuración de Supabase
 
-La configuración inicial para futuras cuentas de usuario se describe en [Supabase: variables públicas y pasos pendientes](docs/supabase.md). El workflow acepta `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY`; el inicio de sesión y los permisos por cuenta aún no están implementados.
+Texla integra Supabase Auth y una biblioteca privada con guardado automático, aislamiento por propietario y detección de conflictos entre dispositivos. Consulta [Supabase: activación del SQL, Google/correo, cuotas y límites](docs/supabase.md). El workflow utiliza `VITE_SUPABASE_URL` y `VITE_SUPABASE_PUBLISHABLE_KEY`; el administrador debe ejecutar la migración y configurar los proveedores antes de usar las cuentas.
 
 ## Referencias y bibliografía
 

@@ -44,7 +44,7 @@ export default function ShareDocument({ document, editor, session, onCreated, on
       localStorage.setItem(SERVER_KEY, endpoint);
       const result = await request(endpoint, '/rooms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ state: toBase64(state) }) });
       const shared: SharedAccess = { server: endpoint, room: result.room, token: result.token, ownerToken: result.ownerToken }; setCreatedAccess(shared);
-      onCreated({ ...document, content: editor.getJSON(), id: sharedId(shared), shared, updated: Date.now() });
+      onCreated({ ...document, content: editor.getJSON(), id: sharedId(shared), shared, cloud: undefined, updated: Date.now() });
     } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo compartir. Tu documento local sigue disponible.'); } finally { setBusy(false); }
   }
   async function stop() {

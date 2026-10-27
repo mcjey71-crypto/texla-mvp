@@ -1,28 +1,95 @@
-# Configuración pública de Supabase
+# Cuentas y biblioteca privada de Texla
 
-El workflow de GitHub Pages ya entrega las variables de Supabase al proceso de compilación de Vite. Este cambio prepara la configuración: todavía no añade inicio de sesión, tablas, permisos ni migración de documentos a Supabase. La colaboración existente continúa usando Cloudflare.
+Texla integra Supabase Auth para entrar con Google o mediante un enlace enviado al correo. Cada cuenta tiene una biblioteca privada en PostgreSQL, guardado automático y reglas RLS que comprueban el propietario. Cloudflare continúa guardando y sincronizando las versiones compartidas por enlace.
 
-## Sitio publicado
+**Publicar la página no crea las tablas ni configura los proveedores de acceso.** Hace falta aplicar el SQL y completar los ajustes siguientes en el proyecto Supabase. No se necesita enviar al chat la contraseña de la base de datos ni una clave administrativa.
 
-En [Settings → Secrets and variables → Actions → Variables](https://github.com/mcjey71-crypto/texla-mvp/settings/variables/actions), crea estas **Repository variables**:
+## 1. Activar la base de datos
 
-| Nombre | Valor |
+1. Abre tu proyecto en el panel de Supabase.
+2. Entra en **SQL Editor → New query**.
+3. Copia el archivo completo [202610270001_private_documents.sql](../supabase/migrations/202610270001_private_documents.sql) y pulsa **Run**.
+4. Debe terminar sin errores. La migración crea `public.texla_documents`, el procedimiento de guardado y las reglas de acceso. No importa, reemplaza ni elimina documentos existentes de Texla. Se puede volver a ejecutar sobre el esquema creado por esta misma versión.
+
+La migración se prueba con PostgreSQL mediante PGlite: usuarios A/B, lectura anónima, escritura y borrado ajenos, cambios de propietario, versiones en conflicto, documentos inválidos y cuotas. Esto verifica las reglas del archivo; no demuestra que ya se haya ejecutado en tu proyecto remoto.
+
+## 2. Configurar las direcciones de acceso
+
+En **Authentication → URL Configuration**:
+
+- **Site URL:** `https://mcjey71-crypto.github.io/texla-mvp/`
+- Añade esa misma dirección exacta a **Redirect URLs**.
+- Solo para desarrollo, puedes añadir `http://localhost:5173/` y `http://127.0.0.1:5173/`.
+
+La aplicación usa PKCE y devuelve el acceso a la ruta correcta de GitHub Pages. Abre los enlaces de correo en el mismo navegador desde el que los solicitaste. Si un enlace falla o caduca, solicita uno nuevo; no reutilices el código de acceso.
+
+## 3. Habilitar Google
+
+1. En [Google Cloud Console](https://console.cloud.google.com/), configura el proyecto y la pantalla de consentimiento de OAuth. Si la aplicación está en modo de prueba, añade como usuarios de prueba los correos que probarán Texla.
+2. Crea un **OAuth Client ID** de tipo **Web application**.
+3. En origen JavaScript autorizado, utiliza `https://mcjey71-crypto.github.io`.
+4. En URI de redirección autorizada, pega la **Callback URL que muestra Supabase** en Authentication → Providers → Google, normalmente `https://TU-PROYECTO.supabase.co/auth/v1/callback`. Esta dirección de Google es distinta de la dirección del sitio Texla.
+5. En Supabase → Authentication → Providers → Google, habilita el proveedor y guarda allí el **Client ID** y **Client Secret** de Google. El secret va solo en Supabase, nunca en variables `VITE_*` ni en el repositorio.
+6. Regresa a Texla → **Iniciar sesión → Actualizar**. Aparecerá **Continuar con Google** cuando el proveedor esté habilitado.
+
+Para acceso por correo, habilita Email. Texla envía enlaces de entrada sin contraseña. El correo incorporado de Supabase tiene restricciones de prueba; para recibir usuarios ajenos al equipo del proyecto configura un proveedor SMTP adecuado y revisa sus cuotas. No se ha añadido SMS ni envío automático por WhatsApp.
+
+## 4. Variables públicas de la página
+
+En [Settings → Secrets and variables → Actions → Variables](https://github.com/mcjey71-crypto/texla-mvp/settings/variables/actions):
+
+| Variable | Valor |
 | --- | --- |
 | `VITE_SUPABASE_URL` | La Project URL real, normalmente `https://identificador.supabase.co` |
-| `VITE_SUPABASE_PUBLISHABLE_KEY` | La clave pública que comienza por `sb_publishable_` |
+| `VITE_SUPABASE_PUBLISHABLE_KEY` | La clave pública completa que comienza por `sb_publishable_` |
 
-No pegues los textos de ejemplo como «Pegue la URL…». Usa los valores que proporciona tu proyecto. La URL está en la configuración del proyecto y la clave publicable en **Settings → API Keys** de Supabase.
+Los valores se incorporan al compilar. Después de cambiarlos, ejecuta [Publish Texla Docs to GitHub Pages](https://github.com/mcjey71-crypto/texla-mvp/actions/workflows/pages.yml) sobre `main`. La publicación comprueba que la configuración usa una clave publicable y que Supabase Auth responde; informa si Google todavía no está habilitado. No muestra la clave en los registros ni ejecuta migraciones.
 
-Después de guardar o cambiar estas variables, ejecuta [Actions → Publish Texla Docs to GitHub Pages → Run workflow](https://github.com/mcjey71-crypto/texla-mvp/actions/workflows/pages.yml) sobre `main`. Vite incorpora la configuración que utiliza la aplicación durante la compilación; cambiar una variable por sí solo no actualiza una publicación anterior.
+Nunca uses una contraseña, una clave `service_role`, una `sb_secret_` ni un token personal en variables `VITE_*`. Aunque se guardase como secret de GitHub, un valor utilizado por Vite quedaría expuesto en el navegador. La clave publicable permite iniciar solicitudes; la autenticación y las reglas RLS determinan qué datos puede consultar o modificar cada usuario.
 
-## Desarrollo local
+## Cómo usar la biblioteca
 
-Copia `.env.example` a `.env.local` y rellena los dos valores reales. Reinicia Vite después de cambiarlos. `.env.local` está excluido de Git y no debe subirse al repositorio. No hace falta modificar ningún archivo de código para guardar las credenciales.
+- Pulsa **Iniciar sesión**. Sin iniciar sesión, los documentos siguen funcionando como antes, guardados en el navegador.
+- Con sesión iniciada, los documentos privados nuevos y las copias importadas se guardan automáticamente en tu cuenta. El estado cambia a **Guardado en tu cuenta** solo después de la confirmación del servidor.
+- Abre **Mi cuenta** o **Mi biblioteca en la nube** para recuperar un documento desde otro dispositivo. El listado lateral muestra los documentos abiertos en ese navegador; el diálogo de biblioteca consulta los que están en Supabase.
+- Para llevar trabajo anterior a la nube, abre **Mi cuenta → Documentos del navegador sin cuenta → Copiar a mi cuenta**. Solo se sube lo que elijas; los originales no se eliminan.
+- Al salir de la cuenta, su biblioteca deja de mostrarse. Los borradores se conservan en un espacio local separado para esa cuenta, para recuperar cambios pendientes cuando vuelvas a entrar. No es cifrado local: evita conservar sesiones o borradores sensibles en dispositivos compartidos y elimina los datos del sitio cuando corresponda.
+- Si una escritura falla, aparece un aviso y el documento abierto se conserva. Pulsa **Reintentar guardado**. No se anuncia guardado en la nube mientras haya errores o cambios pendientes.
+- Si otro dispositivo modificó el mismo documento privado, Texla no sobrescribe esa versión. Usa **Guardar mis cambios como otro documento** para conservar ambas versiones; después puedes abrir el original actualizado desde la biblioteca.
+- **Eliminar de la nube** pide confirmación y conserva cualquier copia abierta en el navegador. La eliminación libera cuota. Las copias exportadas siguen siendo independientes y no contienen sesiones, enlaces de colaboración ni permisos administrativos.
 
-## Qué se puede utilizar en el frontend
+## Cuotas del piloto
 
-La Project URL y la clave **publishable** son configuración pública diseñada para aplicaciones de navegador. No son una contraseña administrativa y no sustituyen los permisos de acceso.
+Son límites de Texla, no promesas de capacidad del plan contratado:
 
-Nunca uses la contraseña de la base de datos, una clave `service_role`, una clave `sb_secret_` ni un token personal de Supabase en variables `VITE_*`: cualquier valor utilizado desde Vite puede quedar visible en el navegador, aunque se haya almacenado como un secret de GitHub.
+| Recurso | Límite |
+| --- | --- |
+| Documentos privados por cuenta | 50 |
+| Contenido privado por cuenta | 10 MiB |
+| Un documento privado | 1 MiB |
+| Contenido privado sumado entre cuentas | 250 MiB |
 
-Antes de habilitar cuentas y documentos personales, debemos implementar Supabase Auth, las tablas necesarias y sus reglas de **Row Level Security (RLS)** para que cada usuario solo pueda consultar o modificar documentos autorizados. También hay que configurar las URL de redirección y el proveedor Google en Supabase. Guardar estas dos variables no realiza esos pasos automáticamente.
+Las cuotas se comprueban dentro de la base de datos, también si alguien intenta omitir la interfaz. El límite global reserva margen para índices y otras estructuras; no mide el tamaño físico total del proyecto, ni sustituye las cuotas de Supabase sobre base de datos, tráfico o autenticación. Revisa el uso real en el panel antes de abrir el registro masivamente. El código no cambia el proyecto a un plan de pago.
+
+Estos topes son independientes de los del [servidor colaborativo Cloudflare](collaboration.md). Los documentos privados no se guardan también en Cloudflare, salvo cuando el usuario crea una versión compartida.
+
+## Qué sigue pendiente
+
+Esta entrega implementa cuentas y biblioteca privada; **los enlaces de colaboración existentes siguen otorgando edición a quien los tenga**. Iniciar sesión no convierte esos enlaces en invitaciones por correo ni en permisos de solo lectura. Compartir un documento privado crea una versión colaborativa independiente en Cloudflare; guardar una copia privada de un documento compartido no sincroniza ambos continuamente.
+
+Todavía no hay historial navegable de versiones, copias de seguridad automáticas fuera del proveedor, borrado de cuenta desde Texla, invitaciones nominales ni recuperación de permisos de propietario de un enlace Cloudflare entre dispositivos. Conserva las copias `.texla.json`. Las revisiones de PostgreSQL detectan conflictos; no constituyen un historial recuperable de cada edición.
+
+## Desarrollo y pruebas
+
+Copia `.env.example` a `.env.local` y rellena los valores públicos. El archivo local está excluido de Git; reinicia Vite al cambiarlo.
+
+```sh
+npm ci
+npm test
+npm run test:accounts
+npm run test:e2e
+npm run test:collaboration
+npm run build -- --base=/texla-mvp/
+```
+
+Las pruebas de cuentas usan respuestas simuladas de Auth/REST y verifican el flujo de la aplicación; las pruebas de políticas ejecutan SQL real en PGlite. El acceso real con Google, la recepción de correo y la aplicación de la migración deben verificarse en el proyecto configurado por el administrador.

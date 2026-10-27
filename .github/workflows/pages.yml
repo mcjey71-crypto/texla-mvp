@@ -29,6 +29,8 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
+      - name: Verify public Supabase configuration
+        run: node scripts/check-supabase.mjs
       - run: npm test
       - run: npm run collab:check
       - name: Verify collaboration service and website access
