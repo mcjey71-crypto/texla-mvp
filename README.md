@@ -93,3 +93,13 @@ Usa **Importar documento** para convertir Word, PDF (incluidos escaneados con OC
 Once plantillas, incluidas **Tesis general** y **Tesis UTEC — PFC/Capstone**, ocho familias tipográficas (incluida Times New Roman), sangría, márgenes, espaciado, capítulos y bibliografía antes de anexos. Consulta [criterios, fuentes documentales y límites](docs/templates.md). Compartir conserva un único documento; las copias antiguas no se borran automáticamente.
 
 Consulta [páginas, CV y pegado de ecuaciones](docs/pages-and-paste.md) para los tamaños de papel, el CV estilo Harvard y la compatibilidad con Google Docs/MathML.
+
+## Borrar documentos
+
+El botón de papelera junto a Compartir abre una confirmación con opción de descargar una copia editable. El borrado del documento abierto elimina su copia de este navegador y, si pertenece a la cuenta, su registro en la nube. El propietario de un documento compartido también desactiva el enlace; un invitado solo lo quita de su lista. Las copias ya descargadas o abiertas en otros dispositivos pueden conservarse. No hay papelera de recuperación.
+
+El guardado automático espera a terminar una solicitud en curso antes de borrar, para evitar recrear el registro. Si el documento privado cambió en otro dispositivo, se conserva y se muestra el conflicto. Si falla la red, el documento permanece disponible; si el enlace ya se desactivó antes del fallo, se informa de ese resultado parcial. Borrar el último documento deja la biblioteca vacía, también después de recargar.
+
+La opción Eliminar de la nube dentro de Mi cuenta conserva su comportamiento específico: retira el registro de la cuenta y mantiene la copia abierta en este navegador.
+
+La carga de imágenes todavía no está implementada. Puede añadirse con un almacenamiento de archivos (por ejemplo, Supabase Storage), permisos para documentos privados/compartidos y exportación de figuras. No conviene incrustar fotografías grandes en el JSON del documento, cuyo límite actual en la nube es 1 MiB.

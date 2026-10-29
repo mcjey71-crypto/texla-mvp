@@ -79,3 +79,16 @@ test('sharing a saved document preserves its account row and reopens the same co
   await page.getByRole('button',{name:'Compartir',exact:true}).click();await page.getByRole('button',{name:'Dejar de compartir',exact:true}).click();await page.getByRole('button',{name:'Confirmar: dejar de compartir'}).click();await expect(page.locator('.collaboration-status')).toHaveCount(0);await expect.poll(()=>rows.get(id)?.payload.collaboration).toBeUndefined();await expect(page.locator('.save-status')).toContainText('Guardado en tu cuenta');await expect(page.locator('.document-list>button')).toHaveCount(count);expect([...rows.keys()]).toEqual([id]);
  } finally {await secondContext.close();}
 });
+
+test('delete waits for an in-flight autosave and removes the account and device document without recreating it',async({page,context})=>{
+ await setup(context,alice);let release!:()=>void;const gate=new Promise<void>(resolve=>{release=resolve;});let held=true;
+ await context.route('https://texla-test.supabase.co/rest/v1/rpc/save_texla_document',async route=>{if(held){held=false;await gate;}await route.fallback();});
+ await page.goto('/');await page.getByRole('button',{name:'Nuevo documento'}).click();await page.getByPlaceholder('Mi próxima gran idea').fill('Borrar durante guardado');const saving=page.waitForRequest(request=>request.url().includes('/rpc/save_texla_document'));await page.getByRole('button',{name:'Crear documento',exact:true}).click();const id=(await saving).postDataJSON().p_id;
+ await page.getByRole('button',{name:'Borrar documento',exact:true}).click();await page.getByRole('button',{name:'Confirmar: borrar documento'}).click();await expect(page.getByRole('button',{name:'Borrando…',exact:true})).toBeDisabled();await expect(page.getByRole('dialog').getByRole('button',{name:'Cerrar',exact:true})).toBeDisabled();
+ release();await expect(page.getByRole('dialog')).toHaveCount(0);await expect(page.locator('.document-list')).not.toContainText('Borrar durante guardado');expect(rows.has(id)).toBe(false);await page.waitForTimeout(2200);expect(rows.has(id)).toBe(false);await page.reload();await expect(page.locator('.document-list')).not.toContainText('Borrar durante guardado');
+});
+test('failed account deletion keeps the document available for retry',async({page,context})=>{
+ await setup(context,alice);await page.goto('/');await create(page,'Conservar si falla');
+ await context.route('https://texla-test.supabase.co/rest/v1/texla_documents**',route=>route.request().method()==='DELETE'?route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({message:'Unavailable'})}):route.fallback());
+ await page.getByRole('button',{name:'Borrar documento',exact:true}).click();await page.getByRole('button',{name:'Confirmar: borrar documento'}).click();await expect(page.getByRole('dialog').getByRole('alert')).toContainText('No se pudo completar');expect(rows.size).toBe(1);await page.getByRole('button',{name:'Cancelar',exact:true}).click();await expect(page.locator('.tiptap')).toContainText('Contenido privado de la cuenta.');
+});

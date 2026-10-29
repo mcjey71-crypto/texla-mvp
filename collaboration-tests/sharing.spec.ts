@@ -135,3 +135,12 @@ test('owner reopening the same link and stopping sharing keep one document',asyn
  await page.goto(link);await expect(page.locator('.collaboration-status')).toContainText('Guardado en el servidor');await expect(page.locator('.document-list>button')).toHaveCount(count);
  await page.getByRole('button',{name:'Compartir',exact:true}).click();await page.getByRole('button',{name:'Dejar de compartir',exact:true}).click();await page.getByRole('button',{name:'Confirmar: dejar de compartir'}).click();await expect(page.locator('.collaboration-status')).toHaveCount(0);await expect(page.locator('.document-list>button')).toHaveCount(count);await expect(page.locator('.tiptap')).toContainText('Introducción compartida.');
 });
+
+test('guests can leave without deleting the team document and owners can delete and revoke its link',async({browser,page})=>{
+ const link=await share(page);const guestContext=await browser.newContext();const guest=await guestContext.newPage();
+ try{
+  await guest.goto(link);await expect(guest.locator('.collaboration-status')).toContainText('Guardado en el servidor');await guest.getByRole('button',{name:'Borrar documento',exact:true}).click();await expect(guest.getByRole('dialog')).toContainText('seguirán funcionando');await guest.getByRole('button',{name:'Confirmar: quitar de mi lista'}).click();await expect(guest.locator('.document-list')).not.toContainText('Investigación en equipo');await expect(page.locator('.tiptap')).toContainText('Introducción compartida.');
+  await guest.goto(link);await expect(guest.locator('.tiptap')).toContainText('Introducción compartida.');await page.getByRole('button',{name:'Borrar documento',exact:true}).click();await expect(page.getByRole('dialog')).toContainText('desactivará el enlace');await page.getByRole('button',{name:'Confirmar: borrar documento'}).click();await expect(page.locator('.document-list')).not.toContainText('Investigación en equipo');await expect(guest.locator('.collaboration-status')).toContainText('Colaboración detenida');
+  await page.reload();await expect(page.locator('.document-list')).not.toContainText('Investigación en equipo');
+ }finally{await guestContext.close();}
+});

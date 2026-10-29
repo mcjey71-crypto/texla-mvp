@@ -135,3 +135,9 @@
 @media print{.paper,.paper.letter,.paper.continuous-paper{width:auto;max-width:none;min-height:0;border:0;border-radius:0;padding:0!important;box-shadow:none}.continuous-paper .page-break{display:none!important;break-after:auto}.paper-footer{display:none!important}}
 
 @media print{.paste-notice{display:none!important}.tiptap{caret-color:transparent!important}}
+/* Document deletion and a genuinely empty local library. */
+.delete-document-button{display:flex;align-items:center;justify-content:center;flex-shrink:0;width:34px;height:34px;border:1px solid #e4d9d2;border-radius:5px;color:#916752;background:#fffaf7}.delete-document-button:hover{background:#f6e9e3;color:#8e3d2a}.delete-document-button:focus-visible{outline:2px solid #94523f;outline-offset:2px}
+.danger-button{display:inline-flex;align-items:center;justify-content:center;border:0;border-radius:5px;padding:12px 17px;background:#963f32;color:white;font-size:12px;font-weight:600}.danger-button:disabled{opacity:.6;cursor:wait}.delete-document-title{font-weight:600;color:#304c37!important;overflow-wrap:anywhere}
+.empty-workspace .document-header,.empty-workspace .editor-navigation,.empty-workspace .toolbar,.empty-workspace .document-tools,.empty-workspace .document-search,.empty-workspace .canvas,.empty-workspace .inspector,.empty-workspace .statusbar{display:none!important}
+.empty-documents{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;width:100%;padding:40px 24px;text-align:center;background:#f5f7ef;color:#536e4b;overflow:auto}.empty-documents h2{font:32px 'Libre Caslon Display',Georgia,serif;margin:0;max-width:440px}.empty-documents p{font-size:13px;line-height:1.8;max-width:420px;margin:0 0 6px;color:#7a8971}.empty-documents .text-button{font-size:12px}
+@media(max-width:760px){.delete-document-button{width:30px;height:32px}.empty-documents h2{font-size:28px}}
