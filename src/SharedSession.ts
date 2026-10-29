@@ -1,7 +1,7 @@
 import * as Y from 'yjs';
-import { SharedCache } from './SharedCache';
+import { SharedCache, sharedCacheName } from './SharedCache';
 import { Awareness, applyAwarenessUpdate, encodeAwarenessUpdate, removeAwarenessStates } from 'y-protocols/awareness';
-import { fromBase64, toBase64, sharedId, type SharedAccess } from '../shared/collaboration';
+import { fromBase64, toBase64, type SharedAccess } from '../shared/collaboration';
 import { resolveFormat, FORMAT_KEYS } from './formalDocument';
 import { resolveStyle } from './citationStyles';
 import { validReference, type Reference } from './references';
@@ -44,7 +44,7 @@ export class SharedSession {
     this.awareness.on('update', this.onAwareness);
     this.awareness.on('change', this.emit);
     try {
-      this.persistence = new SharedCache(`texla-collaboration-v1:${sharedId(this.access)}`, this.doc, () => { this.cacheError = true; this.emit(); });
+      this.persistence = new SharedCache(sharedCacheName(this.access), this.doc, () => { this.cacheError = true; this.emit(); });
       // IDB may be disabled by browser settings. Do not hold the network connection indefinitely.
       await Promise.race([this.persistence.whenSynced, new Promise(resolve => setTimeout(resolve, 1200))]);
       this.persistence.whenSynced.then(() => { if (!this.stopped && this.metadata.has('title')) { this.ready = true; this.emit(); } }).catch(() => { this.cacheError = true; this.emit(); });

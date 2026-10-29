@@ -12,6 +12,7 @@ import StarterKit from '@tiptap/starter-kit';
 import Collaboration from '@tiptap/extension-collaboration';
 import CollaborationCaret from '@tiptap/extension-collaboration-caret';
 import { SharedSession } from './SharedSession';
+import { removeSharedCache } from './SharedCache';
 import ShareDocument, { participantName } from './ShareDocument';
 import { readShareLink, validAccess } from '../shared/collaboration';
 import Mathematics from '@tiptap/extension-mathematics';
@@ -164,6 +165,9 @@ function Workspace({authSession, authError}: {authSession: Session | null; authE
      localStorage.setItem(storageKey,JSON.stringify(next));latestDocs.current=next;setDocs(next);
      if(activeRef.current===id)openDocument(next[0]||EMPTY_DOCUMENT);
      setModal(null);setToast(guest?'Documento quitado de tu lista':'Documento borrado');
+     if(active.shared) {
+       try{await removeSharedCache(active.shared);}catch{setToast('Documento quitado. No se pudo limpiar su caché de sincronización; cierra otras pestañas de Texla.');}
+     }
    } catch(error) {
      if(remoteDone && active.cloud) {
        setDocs(prev=>prev.map(doc=>doc.id===id?{...doc,cloud:undefined}:doc));
