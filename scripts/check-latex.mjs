@@ -1,5 +1,5 @@
 import { createServer } from 'vite';
-import { mkdtempSync, writeFileSync, readFileSync } from 'node:fs';
+import { mkdtempSync, mkdirSync, writeFileSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -46,6 +46,15 @@ try {
     if(!size || Math.abs(Number(size[1])-page.width*72/25.4)>0.1 || Math.abs(Number(size[2])-page.height*72/25.4)>0.1) throw new Error(`${page.id}: PDF dimensions do not match the selected page size.`);
     console.log(`${page.id}: PDF dimensions verified (${page.width} × ${page.height} mm).`);
   }
+  const imageId='10000000-0000-4000-8000-000000000001';
+  const png=Buffer.from('iVBORw0KGgoAAAANSUhEUgAAACAAAAAQCAIAAAD4YuoOAAAAIElEQVR4nGP0SHJmoCVgoqnpoxaMWjBqwagFoxZQCQAAAmUBDf3J3P4AAAAASUVORK5CYII=','base64');
+  mkdirSync(join(directory,'imagenes'));writeFileSync(join(directory,'imagenes',`${imageId}.png`),png);
+  const figure={type:'figure',attrs:{id:imageId,asset:{id:imageId,mime:'image/png',width:32,height:16,size:png.length},caption:'Proceso & resultados: 50%',source:'Elaboración propia',alt:'Esquema',width:60,align:'right'}};
+  writeFileSync(join(directory,'figures.tex'),exportLatex('Proyecto ilustrado',{type:'doc',content:[p('Resultados del proyecto.'),figure]},[],'apa'));
+  for(const engine of ['pdflatex','xelatex'])execFileSync(engine,['-no-shell-escape','-halt-on-error','-interaction=nonstopmode','figures.tex'],{cwd:directory,stdio:'pipe',timeout:60000});
+  const figureText=execFileSync('pdftotext',['figures.pdf','-'],{cwd:directory,encoding:'utf8'});
+  if(!figureText.includes('Elaboración propia')||!/50\s*%/.test(figureText))throw new Error('Figure caption/source missing from compiled PDF.');
+  console.log('Figures: PNG, escaped caption, source and width compiled with pdfLaTeX and XeLaTeX.');
   const utec=createTemplate('utec');
   writeFileSync(join(directory,'utec-xetex.tex'),exportLatex(utec.title,utec.content,[],utec.citationStyle,utec.format));
   execFileSync('xelatex',['-no-shell-escape','-halt-on-error','-interaction=nonstopmode','utec-xetex.tex'],{cwd:directory,stdio:'pipe',timeout:60000});

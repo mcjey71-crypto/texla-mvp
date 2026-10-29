@@ -39,7 +39,7 @@ export default function ImportDocument({ schema, hasAccount, onImport }: { schem
       <FileUp size={30}/><strong>{file ? file.name : 'Elige un archivo o arrástralo aquí'}</strong>
       <span>Word · PDF · OpenDocument · Markdown · Texto · HTML · LaTeX · Texla</span>
       <span className="import-choose">Seleccionar archivo</span><input type="file" aria-label="Archivo para importar" accept={IMPORT_ACCEPT} disabled={busy} onChange={event => { select(event.target.files?.[0]); event.target.value = ''; }}/>
-      <small>Hasta 20 MB por archivo · PDF de hasta 100 páginas</small>
+      <small>Hasta 20 MB por archivo · Copias Texla: 32 MB · PDF de hasta 100 páginas</small>
     </label>
     {isPDF && <div className="import-pdf-note"><label><input type="checkbox" checked={ocr} disabled={busy} onChange={event => { setOCR(event.target.checked); setResult(undefined); }}/><span>Reconocer páginas escaneadas (OCR)</span></label><p>Español e inglés. Descarga el motor de reconocimiento la primera vez y puede tardar varios minutos. Las fórmulas y tablas del PDF requieren revisión manual.</p></div>}
     {busy && <div className="import-progress" role="status"><LoaderCircle size={18}/><span>{progress || 'Convirtiendo…'}</span><button onClick={() => { operation.current?.abort(); setBusy(false); setProgress(''); }}>Cancelar</button></div>}

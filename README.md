@@ -30,6 +30,7 @@ Las pruebas de navegador utilizan `/usr/bin/chromium`. En otra máquina, define 
 ## Funciones
 
 - Documentos múltiples, búsqueda, renombrado y plantillas originales de tesis, artículo académico e informe técnico.
+- Imágenes PNG/JPG/WebP con pie y numeración automática, tamaño y alineación; exportación portable y almacenamiento cifrado en Supabase tras su activación.
 - Tablas visuales con encabezados y controles para añadir/eliminar filas y columnas; exportación a LaTeX.
 - Secciones y subsecciones numeradas, índice automático navegable y saltos de página.
 - Buscar y reemplazar texto, con distinción de mayúsculas y deshacer. Ctrl/Cmd+F abre la herramienta.
@@ -102,4 +103,6 @@ El guardado automático espera a terminar una solicitud en curso antes de borrar
 
 La opción Eliminar de la nube dentro de Mi cuenta conserva su comportamiento específico: retira el registro de la cuenta y mantiene la copia abierta en este navegador.
 
-La carga de imágenes todavía no está implementada. Puede añadirse con un almacenamiento de archivos (por ejemplo, Supabase Storage), permisos para documentos privados/compartidos y exportación de figuras. No conviene incrustar fotografías grandes en el JSON del documento, cuyo límite actual en la nube es 1 MiB.
+## Imágenes y figuras
+
+Pulsa **Imagen** para subir PNG, JPG o WebP, ajustar ancho/alineación y añadir pie, fuente y descripción. Las figuras se numeran automáticamente y se incluyen en PDF, copias editables y exportación LaTeX con imágenes en un ZIP. La carga local funciona directamente; para cuentas y enlaces compartidos, ejecuta la migración de Storage indicada en [la guía de imágenes](docs/images.md). Hasta 20 figuras por documento, 10 MiB por archivo original y 1 MiB por imagen optimizada. Los archivos se guardan fuera del JSON del documento. Borrar figuras o documentos no elimina automáticamente sus archivos, para conservar otras copias y deshacer.

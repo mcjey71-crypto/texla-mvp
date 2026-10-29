@@ -25,6 +25,11 @@ export function databaseFor(session: Session) {
     accessToken: async () => session.access_token,
   });
 }
+export function publicImageUrl(path:string){
+  if(!configuration)throw new Error('El almacenamiento en la nube no está configurado.');
+  if(!/^[a-f0-9-]{36}\/[a-f0-9-]{36}\.bin$/i.test(path))throw new Error('La ruta de imagen no es válida.');
+  return `${configuration.url}/storage/v1/object/public/texla-images/${path}`;
+}
 export const accountRedirectUrl = () => new URL(import.meta.env.BASE_URL, window.location.origin).href;
 export async function signInOptions(signal: AbortSignal): Promise<{ google: boolean; email: boolean }> {
   if (!configuration) return { google: false, email: false };
@@ -35,6 +40,7 @@ export async function signInOptions(signal: AbortSignal): Promise<{ google: bool
 
 export function accountError(error: unknown): string {
   const detail = error as { code?: string; message?: string; status?: number };
+  if(detail?.code==='TEXLA_IMAGES_SETUP')return detail.message||'Falta activar el almacenamiento de imágenes en Supabase.';
   if (['PGRST205', 'PGRST202', '42P01', '42883'].includes(detail?.code || '')) return 'La biblioteca aún no está activada. El administrador debe ejecutar el script SQL de Texla en Supabase.';
   if (detail?.code === '40001' || detail?.code === 'P0002') return 'Este documento cambió en otro dispositivo. Conserva tus cambios como una copia o abre la versión de la nube.';
   if (detail?.code === 'P0001' && detail.message?.startsWith('TEXLA_QUOTA')) return 'Se alcanzó una cuota de la biblioteca: máximo 50 documentos, 10 MiB por cuenta y 1 MiB por documento, sujetos al espacio total disponible.';

@@ -78,6 +78,7 @@ export function readMathClipboard(data:Pick<DataTransfer,'getData'|'files'>,sche
   const mathml=data.getData('application/mathml+xml')||data.getData('text/mathml');
   const latex=data.getData('application/x-latex')||data.getData('text/x-latex');
   if(Math.max(html.length,text.length,mathml.length,latex.length)>1_000_000) throw new Error('El contenido copiado es demasiado grande. Pégalo por partes.');
+  if(/data-texla-figure=/.test(html))return null;
   // Let Tiptap preserve its own citations and native mathematical node selections.
   if(/data-type=["']citation["']/.test(html) || /data-pm-slice=/.test(html)&&/data-type=["'](?:inline|block)-math["']/.test(html)) return null;
   if(!html && mathml) html=mathml;

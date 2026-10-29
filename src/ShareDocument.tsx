@@ -1,4 +1,6 @@
 import { useState } from 'react';
+import type {Session} from '@supabase/supabase-js';
+import {publishDocumentImages} from './imageAssets';
 import type { Editor } from '@tiptap/core';
 import * as Y from 'yjs';
 import { prosemirrorJSONToYDoc } from 'y-prosemirror';
@@ -16,7 +18,7 @@ async function request(server: string, path: string, init?: RequestInit) {
   const data = await response.json(); if (!response.ok) throw new Error(data.error || 'No se pudo conectar con el servidor.'); return data;
 }
 
-export default function ShareDocument({ document, editor, session, onCreated, onStopped }: { document: SavedDocument; editor: Editor; session: SharedSession | null; onCreated: (doc: SavedDocument) => void; onStopped: () => void }) {
+export default function ShareDocument({ document, editor, session, authSession, onCreated, onStopped }: { document: SavedDocument; authSession:Session|null; editor: Editor; session: SharedSession | null; onCreated: (doc: SavedDocument) => void; onStopped: () => void }) {
   const [server, setServer] = useState(configuredServer);
   const [configureConnection, setConfigureConnection] = useState(() => !configuredServer());
   const [name, setName] = useState(participantName);
@@ -31,7 +33,8 @@ export default function ShareDocument({ document, editor, session, onCreated, on
       const endpoint = serverUrl(server.trim());
       const health = await request(endpoint, '/health'); if (health.service !== 'texla-collaboration' || health.version !== PROTOCOL_VERSION) throw new Error('Esta dirección no corresponde a un servidor compatible de Texla.');
       // One initial CRDT is uploaded once. Joiners never seed it with a separate copy.
-      const ydoc = prosemirrorJSONToYDoc(editor.schema, editor.getJSON(), 'default');
+      const prepared=await publishDocumentImages({...document,content:editor.getJSON()},authSession);
+      const ydoc = prosemirrorJSONToYDoc(editor.schema, prepared.content, 'default');
       let state: Uint8Array;
       try {
         const metadata = ydoc.getMap('metadata'); metadata.set('title', document.title || 'Documento sin título'); metadata.set('citationStyle', resolveStyle(document.citationStyle));
@@ -44,7 +47,7 @@ export default function ShareDocument({ document, editor, session, onCreated, on
       localStorage.setItem(SERVER_KEY, endpoint);
       const result = await request(endpoint, '/rooms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ state: toBase64(state) }) });
       const shared: SharedAccess = { server: endpoint, room: result.room, token: result.token, ownerToken: result.ownerToken }; setCreatedAccess(shared);
-      onCreated({ ...document, content: editor.getJSON(), shared, ...(document.cloud ? {cloud:{...document.cloud,dirty:true}} : {}), updated: Date.now() });
+      onCreated({ ...document, content: prepared.content, shared, ...(document.cloud ? {cloud:{...document.cloud,dirty:true}} : {}), updated: Date.now() });
     } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo compartir. Tu documento local sigue disponible.'); } finally { setBusy(false); }
   }
   async function stop() {
@@ -54,7 +57,7 @@ export default function ShareDocument({ document, editor, session, onCreated, on
   }
   return <>
     <h2 id="modal-title">Escriban en el mismo documento.</h2>
-    <p>Texto, tablas, ecuaciones y bibliografía se actualizan entre los participantes.</p>
+    <p>Texto, imágenes, tablas, ecuaciones y bibliografía se actualizan entre los participantes.</p>
     <label className="field-label">Tu nombre para colaborar<input maxLength={60} value={name} onChange={e => changeName(e.target.value)} placeholder="Tu nombre"/></label>
     {access ? <>
       <div className="share-permission"><strong>Cualquier persona con el enlace puede editar.</strong><p>Compártelo únicamente con tu equipo. El enlace funciona como una llave de acceso.</p></div>

@@ -45,7 +45,7 @@ Tamaño A4/Carta, texto 11/12 puntos, interlineado sencillo/1,5/doble, márgenes
 
 ### Copias editables
 
-**Copias editables** o **Exportar → Copia editable de Texla** descargan un `.texla.json` con contenido, ecuaciones, tablas, biblioteca, estilo bibliográfico y formato. **Abrir copia de Texla** valida el archivo y el esquema del editor, y lo abre con una identidad nueva sin reemplazar documentos existentes. Rechaza archivos incompatibles o mayores de 5 MB y comunica errores de espacio. No es una importación de `.tex`, Word ni proyectos de Overleaf, ni un historial automático.
+**Copias editables** o **Exportar → Copia editable de Texla** descargan un `.texla.json` con contenido, imágenes, ecuaciones, tablas, biblioteca, estilo bibliográfico y formato. **Abrir copia de Texla** valida el archivo y el esquema del editor, y lo abre con una identidad nueva sin reemplazar documentos existentes. Rechaza archivos incompatibles o mayores de 32 MiB y comunica errores de espacio. No es una importación de `.tex`, Word ni proyectos de Overleaf, ni un historial automático.
 
 ## Qué queda fuera de esta entrega
 

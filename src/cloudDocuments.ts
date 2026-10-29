@@ -1,4 +1,5 @@
 import type { Session } from '@supabase/supabase-js';
+import {publishDocumentImages} from './imageAssets';
 import { databaseFor } from './supabase';
 import { readAccountCollaboration, sameSharedDocument } from './sharedDocumentIdentity';
 import { makeBackup, readBackup, type SavedDocument } from './backup';
@@ -32,7 +33,9 @@ export async function loadCloudDocument(session: Session, id: string): Promise<S
 }
 export async function saveCloudDocument(session: Session, document: SavedDocument, signal: AbortSignal): Promise<{ version: number }> {
   if (document.cloud?.ownerId !== session.user.id) throw new Error('El documento no pertenece a esta biblioteca.');
-  const { data, error } = await databaseFor(session).rpc('save_texla_document', { p_id: document.id, p_payload: cloudRecordPayload(document), p_expected_version: document.cloud.revision }).abortSignal(signal);
+  document=await publishDocumentImages(document,session);
+  signal.throwIfAborted();
+  const { data, error } = await databaseFor(session).rpc('save_texla_document', { p_id: document.id, p_payload: cloudRecordPayload(document), p_expected_version: document.cloud!.revision }).abortSignal(signal);
   if (error?.code === '40001' && (document.shared || document.cloud?.stoppedSharing)) {
     // Two owner devices may mirror the same CRDT in the same account row. The
     // collaboration server remains authoritative; never restore a revoked/replaced link.

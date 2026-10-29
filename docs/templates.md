@@ -43,7 +43,7 @@ El resumen contiene una indicación de **150–300 palabras**, hasta una página
 
 La bibliografía aparece **antes de los anexos**, se alimenta de las citas utilizadas y mantiene los números IEEE por primera aparición. En **Referencias → Grupo bibliográfico (UTEC)** se clasifica cada fuente como primaria o complementaria. Las fuentes no clasificadas y más de 30 referencias producen avisos para revisión; no se eliminan fuentes automáticamente. No se infiere la categoría desde el DOI.
 
-La tabla de contenido enlaza a los encabezados y se actualiza al editarlos. Los números de página se calculan al compilar LaTeX. Los índices de tablas, figuras y anexos son espacios de trabajo **manuales**, expresamente señalados; no se inventan páginas. La inclusión de imágenes y planos no está resuelta por estas plantillas: conserva sus archivos originales para la entrega final.
+La tabla de contenido enlaza a los encabezados y se actualiza al editarlos. Los números de página se calculan al compilar LaTeX. Los índices de tablas, figuras y anexos son espacios de trabajo **manuales**, expresamente señalados; no se inventan páginas. Puedes añadir imágenes y planos con **Imagen**, con pie y numeración automática; consulta [formatos, exportación y almacenamiento](images.md). Conserva sus archivos originales para la entrega final.
 
 ## APA y otros formatos
 

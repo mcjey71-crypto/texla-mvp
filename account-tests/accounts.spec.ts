@@ -3,17 +3,20 @@ const alice = '00000000-0000-4000-8000-000000000001';
 const bob = '00000000-0000-4000-8000-000000000002';
 type Row = {id:string;owner_id:string;title:string;version:number;size_bytes:number;updated_at:string;payload:any};
 const rows = new Map<string, Row>();
+const images=new Map<string,Buffer>();
 const session = (id:string) => ({access_token:`${Buffer.from('{"alg":"HS256","typ":"JWT"}').toString('base64url')}.${Buffer.from(JSON.stringify({sub:id,exp:Math.floor(Date.now()/1000)+3600,aud:'authenticated',role:'authenticated'})).toString('base64url')}.test`,refresh_token:'test-refresh',token_type:'bearer',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,user:{id,aud:'authenticated',role:'authenticated',email:id===alice?'ana@example.com':'luis@example.com',app_metadata:{provider:'google'},user_metadata:{},created_at:new Date().toISOString()}});
 async function setup(context:BrowserContext,id?:string) {
   if(id) await context.addInitScript(value => localStorage.setItem('sb-texla-test-auth-token',JSON.stringify(value)),session(id));
   await context.route('https://texla-test.supabase.co/**',async route=>{
     const req=route.request(),url=new URL(req.url());const json=(data:unknown,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(data)});
+    if(url.pathname.startsWith('/storage/v1/object/public/texla-images/')){const bytes=images.get(url.pathname.slice('/storage/v1/object/public/texla-images/'.length));return bytes?route.fulfill({contentType:'application/octet-stream',body:bytes}):json({message:'Not found'},404);}
     if(url.pathname==='/auth/v1/settings')return json({external:{google:true,email:true}});
     if(url.pathname==='/auth/v1/otp')return json({});
     if(url.pathname==='/auth/v1/logout')return route.fulfill({status:204});
     if(url.pathname==='/auth/v1/user')return json(session(id!).user);
     let uid='';try{uid=JSON.parse(Buffer.from((req.headers().authorization||'').split('.')[1],'base64url').toString()).sub;}catch{}
     if(!uid)return json({message:'Authentication required'},401);
+    if(url.pathname.startsWith('/storage/v1/object/texla-images/')&&req.method()==='POST'){const path=url.pathname.slice('/storage/v1/object/texla-images/'.length);if(!path.startsWith(uid+'/'))return json({message:'policy violation'},403);if(images.has(path))return json({statusCode:'409',message:'The resource already exists'},409);images.set(path,req.postDataBuffer()!);return json({Key:'texla-images/'+path});}
     if(url.pathname==='/rest/v1/rpc/save_texla_document'){
       const body=req.postDataJSON();const old=rows.get(body.p_id);
       if(old&&(old.owner_id!==uid||old.version!==body.p_expected_version)||!old&&body.p_expected_version!==0)return json({code:'40001',message:'Conflict'},409);
@@ -29,7 +32,7 @@ async function setup(context:BrowserContext,id?:string) {
   });
 }
 async function create(page:import('@playwright/test').Page,name:string){await page.getByRole('button',{name:'Nuevo documento'}).click();await page.getByPlaceholder('Mi próxima gran idea').fill(name);await page.getByRole('button',{name:'Crear documento',exact:true}).click();await page.locator('.tiptap p').last().click();await page.keyboard.type('Contenido privado de la cuenta.');await expect(page.locator('.save-status')).toContainText('Guardado en tu cuenta');}
-test.beforeEach(()=>rows.clear());
+test.beforeEach(()=>{rows.clear();images.clear();});
 
 test('Google and email login options are available, use PKCE and preserve local work',async({page,context})=>{
   await setup(context);await page.goto('/');await page.getByRole('button',{name:'Iniciar sesión',exact:true}).click();await expect(page.getByRole('button',{name:'Continuar con Google'})).toBeVisible();
@@ -91,4 +94,26 @@ test('failed account deletion keeps the document available for retry',async({pag
  await setup(context,alice);await page.goto('/');await create(page,'Conservar si falla');
  await context.route('https://texla-test.supabase.co/rest/v1/texla_documents**',route=>route.request().method()==='DELETE'?route.fulfill({status:503,contentType:'application/json',body:JSON.stringify({message:'Unavailable'})}):route.fallback());
  await page.getByRole('button',{name:'Borrar documento',exact:true}).click();await page.getByRole('button',{name:'Confirmar: borrar documento'}).click();await expect(page.getByRole('dialog').getByRole('alert')).toContainText('No se pudo completar');expect(rows.size).toBe(1);await page.getByRole('button',{name:'Cancelar',exact:true}).click();await expect(page.locator('.tiptap')).toContainText('Contenido privado de la cuenta.');
+});
+
+async function chooseImage(page:import('@playwright/test').Page){
+ const png=await page.evaluate(()=>{const canvas=document.createElement('canvas');canvas.width=600;canvas.height=240;const ctx=canvas.getContext('2d')!;ctx.fillStyle='#486243';ctx.fillRect(0,0,600,240);return canvas.toDataURL('image/png').split(',')[1];});
+ await page.getByRole('button',{name:'Imagen',exact:true}).click();await page.getByLabel('Archivo de imagen').setInputFiles({name:'proyecto.png',mimeType:'image/png',buffer:Buffer.from(png,'base64')});await expect(page.getByAltText('Vista previa de la imagen')).toBeVisible();await page.getByLabel('Pie de figura',{exact:true}).fill('Esquema del proyecto');
+}
+test('encrypted images survive cloud reopening and are visible to shared guests without exposing upload rights',async({page,context,browser})=>{
+ await setup(context,alice);await page.goto('/');await create(page,'Proyecto ilustrado');const id=[...rows.keys()][0];
+ await chooseImage(page);await page.getByRole('button',{name:'Insertar imagen',exact:true}).click();await expect(page.locator('.texla-figure img')).toBeVisible();await expect.poll(()=>JSON.stringify(rows.get(id)?.payload)).toContain('"remote"');
+ expect(images.size).toBe(1);const encrypted=[...images.values()][0];expect([...encrypted.subarray(0,8)]).not.toEqual([137,80,78,71,13,10,26,10]);expect(JSON.stringify(rows.get(id)?.payload)).not.toContain('data:image');
+ const secondContext=await browser.newContext();await setup(secondContext,alice);const second=await secondContext.newPage();const guestContext=await browser.newContext();await setup(guestContext);const guest=await guestContext.newPage();
+ try{
+  await second.goto('/');await second.getByRole('button',{name:'Mi cuenta',exact:true}).click();await second.getByRole('button',{name:/^Proyecto ilustrado/}).click();await expect(second.locator('.texla-figure img')).toBeVisible();expect(await second.locator('.texla-figure img').evaluate((el:HTMLImageElement)=>el.naturalWidth)).toBe(600);
+  await page.getByRole('button',{name:'Compartir',exact:true}).click();await page.getByLabel('Servidor de colaboración').fill('http://127.0.0.1:8790');await page.getByRole('button',{name:'Crear enlace de edición'}).click();await expect(page.getByLabel('Enlace de edición')).toBeVisible();const link=await page.getByLabel('Enlace de edición').inputValue();await page.getByRole('button',{name:'Cerrar',exact:true}).click();
+  await guest.goto(link);await expect(guest.locator('.texla-figure img')).toBeVisible();await expect(guest.locator('.collaboration-status')).toContainText('Guardado en el servidor');expect(await guest.locator('.texla-figure img').evaluate((el:HTMLImageElement)=>el.naturalWidth)).toBe(600);
+  await guest.getByRole('button',{name:'Editar imagen',exact:true}).click();await guest.getByLabel('Pie de figura',{exact:true}).fill('Esquema revisado');await guest.getByRole('button',{name:'Guardar figura',exact:true}).click();await expect(page.locator('figcaption')).toContainText('Esquema revisado');
+  await chooseImage(guest);await guest.getByRole('button',{name:'Insertar imagen',exact:true}).click();await expect(guest.getByRole('alert')).toContainText('Inicia sesión');expect(images.size).toBe(1);await expect(guest.locator('.texla-figure')).toHaveCount(1);await guest.getByRole('button',{name:'Cerrar',exact:true}).click();
+  await page.getByRole('button',{name:'Compartir',exact:true}).click();await page.getByRole('button',{name:'Dejar de compartir',exact:true}).click();await page.getByRole('button',{name:'Confirmar: dejar de compartir'}).click();
+ }finally{await secondContext.close();await guestContext.close();}
+});
+test('missing image bucket keeps the upload form and existing document intact, then retry succeeds',async({page,context})=>{
+ await setup(context,alice);let missing=true;await context.route('https://texla-test.supabase.co/storage/v1/object/texla-images/**',route=>missing?route.fulfill({status:404,contentType:'application/json',body:JSON.stringify({statusCode:'404',message:'Bucket not found'})}):route.fallback());await page.goto('/');await create(page,'Conservar contenido');await chooseImage(page);await page.getByRole('button',{name:'Insertar imagen',exact:true}).click();await expect(page.getByRole('alert')).toContainText('Activa el almacenamiento');await expect(page.locator('.texla-figure')).toHaveCount(0);await expect(page.locator('.tiptap')).toContainText('Contenido privado');await expect(page.getByAltText('Vista previa de la imagen')).toBeVisible();missing=false;await page.getByRole('button',{name:'Insertar imagen',exact:true}).click();await expect(page.locator('.texla-figure img')).toBeVisible();expect(images.size).toBe(1);
 });

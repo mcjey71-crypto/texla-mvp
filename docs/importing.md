@@ -12,9 +12,9 @@ Pulsa **Importar documento** en la barra de herramientas o en el menú lateral, 
 | Texto `.txt` | Párrafos y fórmulas entre `$…$`, `$$…$$`, `\(…\)` y `\[…\]` | Formato y estructura de párrafos. Usa UTF-8. |
 | HTML `.html`, `.htm` | Estructura y formato básico, tablas y enlaces seguros | Estilos complejos; las imágenes se sustituyen por indicaciones de ubicación. Se eliminan scripts y contenido ejecutable. |
 | LaTeX `.tex` | Títulos, listas, énfasis, ecuaciones y comandos habituales | Es una importación parcial, no un compilador: los entornos/macros no compatibles quedan como texto con un aviso. No carga `.bib`, archivos incluidos ni imágenes. |
-| Texla `.texla.json` | Contenido, ecuaciones, referencias vinculadas y formato compatibles | La copia importada no contiene sesiones ni permisos de colaboración. |
+| Texla `.texla.json` | Contenido, imágenes incluidas en la copia, ecuaciones, referencias vinculadas y formato compatibles | La copia importada no contiene sesiones ni permisos de colaboración. |
 
-Las referencias de otros formatos se conservan como texto, cuando están presentes en el contenido recuperable; no pasan automáticamente a ser citas vinculadas. Usa **Referencias** y la búsqueda DOI para registrarlas. Conserva siempre el archivo original, especialmente si contiene gráficos o ecuaciones complejas.
+Las referencias de otros formatos se conservan como texto, cuando están presentes en el contenido recuperable; no pasan automáticamente a ser citas vinculadas. Usa **Referencias** y la búsqueda DOI para registrarlas. Conserva siempre el archivo original, especialmente si contiene gráficos o ecuaciones complejas. Las imágenes de otros formatos se pueden añadir manualmente después con **Imagen**; consulta [la guía](images.md).
 
 ## PDF escaneado
 
@@ -26,9 +26,9 @@ Los PDF protegidos con contraseña deben desbloquearse antes de importarlos. En 
 
 ## Almacenamiento y límites
 
-- Hasta **20 MB** por archivo y **100 páginas** por PDF; divide los archivos mayores.
+- Hasta **20 MB** por archivo (**32 MiB** para copias Texla con imágenes) y **100 páginas** por PDF; divide los archivos mayores.
 - Los documentos Office se limitan a **32 MB descomprimidos** y 3.000 entradas del archivo comprimido.
-- Los textos/HTML intermedios se limitan a un millón de caracteres y la estructura final usa los límites de las copias editables: hasta 5 MB, 50.000 nodos y 30 niveles.
+- Los textos/HTML intermedios se limitan a un millón de caracteres y la estructura final usa los límites de las copias editables: hasta 32 MiB, 50.000 nodos y 30 niveles.
 - El espacio total local depende del navegador. Si no queda espacio, no se sustituye el documento actual.
 - Con sesión iniciada, **Guardar también en mi cuenta** está marcado inicialmente para documentos de hasta 1 MiB. Puedes desmarcarlo para conservar la copia en ese navegador. Los documentos mayores se ofrecen solo como copia local: divídelos para guardarlos en la nube. Se mantienen las cuotas de cuenta y las reglas de acceso de Supabase.
 - El archivo original no se almacena en Supabase ni Cloudflare: solo el contenido convertido, si eliges guardarlo en tu cuenta. Compartir convierte ese mismo documento en colaborativo sin duplicarlo en la biblioteca.
