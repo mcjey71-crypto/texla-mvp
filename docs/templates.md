@@ -1,6 +1,6 @@
 # Plantillas y tipografías de Texla
 
-La galería ofrece diez plantillas. Cada una crea un documento independiente con contenido orientativo y ajustes propios. Compartir ese documento **no crea otro documento**.
+La galería ofrece once plantillas. Cada una crea un documento independiente con contenido orientativo y ajustes propios. Compartir ese documento **no crea otro documento**.
 
 | Plantilla | Fuente elegida | Papel / márgenes | Interlineado | Referencias |
 | --- | --- | --- | --- | --- |
@@ -13,6 +13,7 @@ La galería ofrece diez plantillas. Cada una crea un documento independiente con
 | Informe de laboratorio | STIX Two Text 11 | A4 / 2,5 cm | 1,5 | IEEE |
 | Monografía | EB Garamond 12 | A4 / 2,5 cm | 1,5 | APA 7 |
 | Carta formal | Calibri 11 | A4 / 2,5 cm | Sencillo | Sin bibliografía inicial |
+| CV estilo Harvard | Times New Roman 11 | A4 / 2 cm | Sencillo | Sin bibliografía inicial |
 | Reporte de caso clínico | Times New Roman 12 | A4 / 2,5 cm | Doble | Vancouver |
 
 **No existe una norma de formato única para todas las tesis, informes o revistas.** Salvo los criterios extraídos de los PDF UTEC y los ajustes básicos APA indicados, estas combinaciones son decisiones editoriales sugeridas. Las instrucciones de la universidad, revista, curso o destinatario prevalecen. Las plantillas no certifican cumplimiento editorial o institucional completo.
@@ -65,3 +66,9 @@ Hay ocho opciones: Literata, Times New Roman, Arial, Calibri, Cambria, Georgia, 
 Texla no distribuye fuentes propietarias de Microsoft. Usa la fuente instalada cuando está disponible y sustitutas libres cuando falta: Tinos para Times New Roman, Arimo para Arial, Carlito para Calibri, STIX Two Text para Cambria y Literata para Georgia. No todas las sustituciones tienen métricas idénticas. Las fuentes libres se sirven desde el propio sitio.
 
 Para reproducir exactamente la familia elegida en LaTeX, usa **XeLaTeX o LuaLaTeX con esa fuente instalada**. El preámbulo incluye alternativas TeX Gyre y Latin Modern; pdfLaTeX usa familias sustitutivas. Esto puede alterar los saltos de página. La impresión del navegador utiliza el tamaño y márgenes del documento y números de página mediante cajas de margen CSS en navegadores compatibles; desactiva los encabezados/pies automáticos del navegador para evitar URL/fecha adicionales.
+
+## CV estilo Harvard
+
+Plantilla de una columna inspirada en la estructura de résumé con viñetas: educación, experiencia, liderazgo/actividades y habilidades/intereses. Los puestos se presentan del más reciente al anterior y los logros se redactan con verbos de acción y resultados verificables. No incluye foto, datos ficticios ni bibliografía. La plantilla inicial ocupa una página al compilar e imprimir, pero la extensión final depende del contenido añadido.
+
+A4, Times New Roman 11, márgenes de 2 cm e interlineado sencillo son la adaptación editorial de Texla, no requisitos universales de Harvard. La plantilla no es oficial ni implica afiliación. Referencia para contraste: [Harvard MCS — Bullet Point Resume Template](https://careerservices.fas.harvard.edu/resources/bullet-point-resume-template/). El acceso web a esa página fue bloqueado por la red de este entorno; no se afirma una verificación reciente del archivo oficial.

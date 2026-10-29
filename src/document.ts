@@ -1,5 +1,6 @@
 import { resolveFormat, type DocumentFormat } from './formalDocument';
 import { tableToLatex } from './tableLatex';
+import { latexPage } from './pageFormats';
 import { fontLatex } from './fonts';
 import { formatReferences, referenceGroups, type CitationStyle } from './citationStyles';
 import { citedReferences, type Reference } from './references';
@@ -28,10 +29,11 @@ export function nodeToLatex(node: DocNode, citationNumbers: Map<string, number> 
   if (node.type === 'bibliographyAnchor') return bibliographyContent || `\\section*{Referencias bibliográficas}\n\\phantomsection\n\\addcontentsline{toc}{section}{Referencias bibliográficas}\n${format.bibliographyGroups ? '\\subsection*{Referencias primarias}\n\\subsection*{Referencias complementarias}\n' : ''}`;
   if (node.type === 'table') return tableToLatex(node, child => nodeToLatex(child, citationNumbers, citationLabels, format, bibliographyContent));
   if (node.type === 'tableOfContents') return '\\tableofcontents\n';
-  if (node.type === 'pageBreak') return '\\clearpage\n';
+  if (node.type === 'pageBreak') return format.pageSize === 'Continuo' ? '\n' : '\\clearpage\n';
   const inner = (node.content || []).map(child => nodeToLatex(child, citationNumbers, citationLabels, format, bibliographyContent)).join('');
   switch (node.type) {
     case 'heading': {
+      if (node.attrs?.level === 1 && format.headingStyle === 'cv') return `\n\\begin{center}\\Large\\bfseries ${inner}\\end{center}\n`;
       if (node.attrs?.level === 1) return `\n\\section*{${inner}}\n`;
       const command = node.attrs?.level === 2 ? 'section' : node.attrs?.level === 3 ? 'subsection' : 'subsubsection';
       const numbered = format.numberedSections && node.attrs?.numbered !== false;
@@ -54,6 +56,7 @@ export function nodeToLatex(node: DocNode, citationNumbers: Map<string, number> 
 }
 export function exportLatex(title: string, content: DocNode, library: Reference[] = [], style: CitationStyle = 'ieee', options?: Partial<DocumentFormat>): string {
   const format = resolveFormat(options);
+  const paper = latexPage(format.pageSize);
   const references = citedReferences(content, library);
   const numbers = new Map(references.map((ref, index) => [ref.id, index + 1]));
   const formatted = formatReferences(references, style);
@@ -65,9 +68,9 @@ export function exportLatex(title: string, content: DocNode, library: Reference[
   const bibliography = references.length ? `\n\\clearpage\n${style === 'apa' ? '\\begin{center}\\textbf{Referencias}\\end{center}' : '\\section*{Referencias}'}\n\\phantomsection\n\\addcontentsline{toc}{section}{Referencias}\n\\begingroup\n\\setlength{\\parindent}{0pt}\n${style === 'apa' ? '\\begin{spacing}{2}\n' : ''}${entries}\n${style === 'apa' ? '\\end{spacing}\n' : ''}\\endgroup\n` : '';
 
   const anchored = (node: DocNode): boolean => node.type === 'bibliographyAnchor' || !!node.content?.some(anchored);
-  const structure = format.headingStyle !== 'editorial' ? `\\usepackage{titlesec}\n\\titleformat{\\section}${format.sectionStyle === 'chapters' ? '[display]' : ''}{\\centering\\bfseries${format.headingStyle === 'apa' ? '\\normalsize' : '\\fontsize{16}{20}\\selectfont'}}{${format.sectionStyle === 'chapters' ? 'CAPÍTULO \\Roman{section}' : '\\thesection'}}{0.5em}{}\n\\titleformat{\\subsection}{\\bfseries\\normalsize}{\\thesubsection}{0.5em}{}\n\\titleformat{\\subsubsection}{\\bfseries\\normalsize}{\\thesubsubsection}{0.5em}{}\n` : '';
+  const structure = format.headingStyle === 'cv' ? `\\usepackage{titlesec}\n\\titleformat{\\section}{\\bfseries\\normalsize}{}{0pt}{}[\\titlerule]\n\\titlespacing*{\\section}{0pt}{8pt}{4pt}\n\\let\\cvitemize\\itemize\n\\let\\endcvitemize\\enditemize\n\\renewenvironment{itemize}{\\cvitemize\\setlength{\\itemsep}{0pt}\\setlength{\\parsep}{0pt}\\setlength{\\topsep}{0pt}}{\\endcvitemize}\n` : format.headingStyle !== 'editorial' ? `\\usepackage{titlesec}\n\\titleformat{\\section}${format.sectionStyle === 'chapters' ? '[display]' : ''}{\\centering\\bfseries${format.headingStyle === 'apa' ? '\\normalsize' : '\\fontsize{16}{20}\\selectfont'}}{${format.sectionStyle === 'chapters' ? 'CAPÍTULO \\Roman{section}' : '\\thesection'}}{0.5em}{}\n\\titleformat{\\subsection}{\\bfseries\\normalsize}{\\thesubsection}{0.5em}{}\n\\titleformat{\\subsubsection}{\\bfseries\\normalsize}{\\thesubsubsection}{0.5em}{}\n` : '';
   const pageNumbers = format.pageNumbers === 'none' ? '\\pagestyle{empty}\n' : format.pageNumbers === 'top-right' ? '\\usepackage{fancyhdr}\n\\pagestyle{fancy}\n\\fancyhf{}\n\\fancyhead[R]{\\thepage}\n\\renewcommand{\\headrulewidth}{0pt}\n\\setlength{\\headheight}{15pt}\n' : '\\pagestyle{plain}\n';
-  return `\\documentclass[${format.fontSize}pt,${format.pageSize === 'Carta' ? 'letterpaper' : 'a4paper'}]{article}\n${fontLatex(format.fontFamily)}\\usepackage[spanish]{babel}\n\\usepackage{amsmath,amssymb}\n\\usepackage{xurl}\n\\urlstyle{same}\n\\usepackage{setspace}\n\\usepackage{longtable,array,booktabs,multirow}\n\\usepackage[margin=${format.margin}cm]{geometry}\n\\setstretch{${format.lineSpacing}}\n\\setlength{\\parindent}{${format.firstLineIndent}cm}\n\\setlength{\\parskip}{${format.paragraphSpacing}pt}\n${format.firstLineIndent ? '\\usepackage{indentfirst}\n' : ''}${structure}${pageNumbers}\\usepackage[hidelinks]{hyperref}\n\\setlength{\\emergencystretch}{2em}\n\\title{${escapeTex(title)}}\n\\date{}\n\\begin{document}\n${nodeToLatex(content, numbers, formatted.citations, format, bibliography)}${anchored(content) ? '' : bibliography}\n\\end{document}\n`;
+  return `\\documentclass[${format.fontSize}pt,${paper.classOption}]{article}\n${fontLatex(format.fontFamily)}\\usepackage[spanish]{babel}\n\\usepackage{amsmath,amssymb}\n\\usepackage{xurl}\n\\urlstyle{same}\n\\usepackage{setspace}\n\\usepackage{longtable,array,booktabs,multirow}\n\\usepackage[${paper.geometry},margin=${format.margin}cm]{geometry}\n\\setstretch{${format.lineSpacing}}\n\\setlength{\\parindent}{${format.firstLineIndent}cm}\n\\setlength{\\parskip}{${format.paragraphSpacing}pt}\n${format.firstLineIndent ? '\\usepackage{indentfirst}\n' : ''}${structure}${pageNumbers}\\usepackage[hidelinks]{hyperref}\n\\setlength{\\emergencystretch}{2em}\n\\title{${escapeTex(title)}}\n\\date{}\n\\begin{document}\n${nodeToLatex(content, numbers, formatted.citations, format, bibliography)}${anchored(content) ? '' : bibliography}\n\\end{document}\n`;
 }
 export const initialContent: DocNode = { type: 'doc', content: [
  { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'El lenguaje del universo' }] },

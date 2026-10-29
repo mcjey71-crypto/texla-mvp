@@ -118,3 +118,20 @@
 @media(max-width:760px){.template-grid{grid-template-columns:1fr}.template-choose{height:auto}.formal-paper .tiptap h1{font-size:17pt}.formal-paper .tiptap h2{font-size:14pt}}
 @media print{.embedded-bibliography{break-before:auto}.bibliography-hint{display:none}.formal-paper .tiptap h1{font-size:18pt}.formal-paper .tiptap h2{font-size:16pt}.formal-paper .tiptap h3,.formal-paper .tiptap h4{break-after:avoid}}
 .apa-paper .tiptap h1,.apa-paper .tiptap h2,.apa-paper .tiptap h3,.apa-paper .tiptap h4,.apa-paper .bibliography h2{font-size:var(--body-size);line-height:var(--body-spacing)}.apa-paper .tiptap h2{text-align:center}.apa-paper .tiptap h3,.apa-paper .tiptap h4{text-align:left}.apa-paper .tiptap h1{margin:24pt 0}
+
+/* Page dimensions persist in the document; the editor preview adapts to its viewport. */
+.paper{width:100%;max-width:var(--page-width,210mm);min-height:var(--page-height,297mm)}
+.paper.letter{min-height:var(--page-height,279.4mm)}
+.paper.continuous-paper{max-width:none;min-height:0;border:0;box-shadow:none;border-radius:8px;padding-top:28px;padding-bottom:28px}
+.continuous-paper .page-break,.continuous-paper .paper-footer{display:none}
+.paste-notice{display:flex;align-items:flex-start;gap:12px;padding:12px 24px;background:#fff7e8;color:#705b32;font-size:12px;line-height:1.6;border-bottom:1px solid #eadfc9}
+.paste-notice span{flex:1}.paste-notice button{flex-shrink:0;padding:3px}
+.cv-paper .tiptap{color:#111;line-height:var(--body-spacing,1)}
+.cv-paper .tiptap h1{font-size:18pt;line-height:1.2;text-align:center;margin:0 0 8pt;color:#111}
+.cv-paper .tiptap h2{font-size:var(--body-size,11pt);line-height:1.2;text-align:left;margin:12pt 0 6pt;padding-bottom:3pt;border-bottom:1px solid #111;color:#111}
+.cv-paper .tiptap h3,.cv-paper .tiptap h4{font-size:var(--body-size,11pt);color:#111}
+.cv-paper .tiptap ul{margin:4pt 0 8pt;padding-left:18pt}.cv-paper .tiptap li{margin:0 0 3pt}
+.cv-paper .tiptap li p{margin:0}.cv-paper .paper-footer{display:none}
+@media print{.paper,.paper.letter,.paper.continuous-paper{width:auto;max-width:none;min-height:0;border:0;border-radius:0;padding:0!important;box-shadow:none}.continuous-paper .page-break{display:none!important;break-after:auto}.paper-footer{display:none!important}}
+
+@media print{.paste-notice{display:none!important}.tiptap{caret-color:transparent!important}}

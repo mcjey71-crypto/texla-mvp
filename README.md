@@ -33,7 +33,7 @@ Las pruebas de navegador utilizan `/usr/bin/chromium`. En otra máquina, define 
 - Tablas visuales con encabezados y controles para añadir/eliminar filas y columnas; exportación a LaTeX.
 - Secciones y subsecciones numeradas, índice automático navegable y saltos de página.
 - Buscar y reemplazar texto, con distinción de mayúsculas y deshacer. Ctrl/Cmd+F abre la herramienta.
-- Formato por documento: A4/Carta, márgenes, tamaño del texto e interlineado. Se conserva al imprimir y exportar.
+- Formato por documento: A4 (predeterminado), Carta, A5, A3, A2, A1 y modo continuo sin páginas; márgenes, tamaño del texto e interlineado. Se conserva al imprimir y exportar.
 - Copias editables `.texla.json` para descargar y abrir trabajos como documentos nuevos, sin reemplazar los existentes.
 - Editor visual con títulos, listas, negrita, cursiva, subrayado y alineación izquierda, centrada, derecha o justificada. Usa el botón Justificar o Ctrl+Mayús+J; en pantallas pequeñas, el selector de alineación. La elección se guarda con el documento y se conserva al imprimir. La exportación LaTeX justifica por defecto y aplica las otras alineaciones por párrafo.
 - Matemáticas visuales con teclado MathLive, plantillas y edición al hacer clic. Las ecuaciones en bloque se muestran sin recuadro, centradas y numeradas automáticamente a la derecha; la numeración se recalcula al editar y se conserva al imprimir. Las fórmulas en línea no llevan número. La exportación usa el entorno `equation` para numeración nativa en LaTeX.
@@ -90,4 +90,6 @@ Usa **Importar documento** para convertir Word, PDF (incluidos escaneados con OC
 
 ## Plantillas y formato
 
-Diez plantillas, incluidas **Tesis general** y **Tesis UTEC — PFC/Capstone**, ocho familias tipográficas (incluida Times New Roman), sangría, márgenes, espaciado, capítulos y bibliografía antes de anexos. Consulta [criterios, fuentes documentales y límites](docs/templates.md). Compartir conserva un único documento; las copias antiguas no se borran automáticamente.
+Once plantillas, incluidas **Tesis general** y **Tesis UTEC — PFC/Capstone**, ocho familias tipográficas (incluida Times New Roman), sangría, márgenes, espaciado, capítulos y bibliografía antes de anexos. Consulta [criterios, fuentes documentales y límites](docs/templates.md). Compartir conserva un único documento; las copias antiguas no se borran automáticamente.
+
+Consulta [páginas, CV y pegado de ecuaciones](docs/pages-and-paste.md) para los tamaños de papel, el CV estilo Harvard y la compatibilidad con Google Docs/MathML.

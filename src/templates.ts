@@ -1,7 +1,7 @@
 import type { DocNode } from './document';
 import type { CitationStyle } from './citationStyles';
 import { DEFAULT_FORMAT, resolveFormat, type DocumentFormat } from './formalDocument';
-export type TemplateId = 'thesis' | 'utec' | 'article' | 'report' | 'proposal' | 'essay' | 'lab' | 'monograph' | 'letter' | 'clinical';
+export type TemplateId = 'thesis' | 'utec' | 'article' | 'report' | 'proposal' | 'essay' | 'lab' | 'monograph' | 'letter' | 'clinical' | 'cv';
 export type Template = { id: TemplateId; title: string; description: string; note: string; format: Partial<DocumentFormat>; citationStyle: CitationStyle; category: string };
 const formal = { fontSize: 12, fontFamily: 'Times New Roman', headingStyle: 'formal', firstLineIndent: 1.25 } as const;
 export const TEMPLATES: Template[] = [
@@ -15,6 +15,7 @@ export const TEMPLATES: Template[] = [
   { id:'monograph', title:'Monografía', category:'Académico', description:'Delimitación del tema, revisión crítica, desarrollo y conclusiones.', note:'Base para una revisión temática; el formato final depende de la institución.', format:{...formal,fontFamily:'EB Garamond',numberedSections:true}, citationStyle:'apa' },
   { id:'letter', title:'Carta formal', category:'Profesional', description:'Destinatario, asunto, exposición, solicitud y firma.', note:'Carta en bloque, sin sangría. Cambia los campos entre corchetes antes de enviarla.', format:{fontFamily:'Calibri',fontSize:11,lineSpacing:1,headingStyle:'formal',paragraphAlignment:'left',pageNumbers:'none'}, citationStyle:'apa' },
   { id:'clinical', title:'Reporte de caso clínico', category:'Investigación', description:'Información anonimizada, hallazgos, diagnóstico, intervención y seguimiento.', note:'Esquema de trabajo con citas Vancouver; revisa las normas de la revista y el consentimiento aplicable.', format:{...formal,lineSpacing:2,paragraphSpacing:0}, citationStyle:'vancouver' },
+  { id:'cv', title:'CV estilo Harvard', category:'Profesional', description:'Currículum sobrio de una columna: educación, experiencia, liderazgo y habilidades.', note:'Inspirado en la estructura de résumé con viñetas de Harvard: orden cronológico inverso, logros concretos y lectura rápida. Adaptado a A4; no es una plantilla oficial ni implica afiliación a Harvard. Sustituye los campos y elimina lo que no aplique; procura una página para perfiles iniciales.', format:{pageSize:'A4',fontFamily:'Times New Roman',fontSize:11,margin:2,lineSpacing:1,firstLineIndent:0,paragraphSpacing:6,paragraphAlignment:'left',headingStyle:'cv',pageNumbers:'none'}, citationStyle:'apa' },
 ];
 export const t = (value: string): DocNode[] => [{ type:'text', text:value }];
 export const p = (value: string, align?: string): DocNode => ({type:'paragraph', ...(align ? {attrs:{textAlign:align}} : {}), content:t(value)});
@@ -25,10 +26,11 @@ const sections = (items: [string,string][]) => items.flatMap(([title,hint])=>[h(
 export function createTemplate(id: TemplateId): {title:string; content:DocNode; format:DocumentFormat; citationStyle:CitationStyle} {
   const template = TEMPLATES.find(item=>item.id===id) || TEMPLATES[0];
   const format = resolveFormat({...DEFAULT_FORMAT,...template.format});
-  const titles:Record<TemplateId,string>={thesis:'Mi tesis',utec:'Mi proyecto UTEC',article:'Mi artículo académico',report:'Mi informe técnico',proposal:'Mi proyecto de investigación',essay:'Mi ensayo académico',lab:'Mi informe de laboratorio',monograph:'Mi monografía',letter:'Mi carta formal',clinical:'Mi reporte de caso clínico'};
+  const titles:Record<TemplateId,string>={thesis:'Mi tesis',utec:'Mi proyecto UTEC',article:'Mi artículo académico',report:'Mi informe técnico',proposal:'Mi proyecto de investigación',essay:'Mi ensayo académico',lab:'Mi informe de laboratorio',monograph:'Mi monografía',letter:'Mi carta formal',clinical:'Mi reporte de caso clínico',cv:'Mi currículum vitae'};
   const title=titles[template.id];
   let content:DocNode[];
-  if(id==='utec') content=utecContent();
+  if(id==='cv') content=cvContent();
+  else if(id==='utec') content=utecContent();
   else if(id==='letter') content=[p('[Ciudad], [fecha]'),p('[Nombre del destinatario]'),p('[Cargo e institución]'),p('[Dirección]'),h('Asunto: [motivo de la carta]',2,false),p('Estimado/a [tratamiento y apellido]:'),p('[Preséntate y explica el motivo de esta comunicación.]'),p('[Expón los antecedentes y sustenta tu solicitud de forma breve y concreta.]'),p('[Indica la acción solicitada, el plazo y el medio de contacto.]'),p('Atentamente,'),p('[Nombre completo]'),p('[Cargo, firma y datos de contacto]')];
   else if(id==='thesis') content=[h(title,1),p('[Autoría, institución, programa, asesor y fecha.]','center'),pageBreak(),h('Resumen',2,false),p('[Resume el propósito, el método, los resultados y las conclusiones. Ajusta la extensión al reglamento de tu universidad.]'),p('Palabras clave: [términos principales].'),pageBreak(),h('Abstract',2,false),p('[Escribe aquí la versión del resumen en inglés, si la institución lo exige.]'),p('Keywords: [key terms].'),pageBreak(),{type:'tableOfContents'},pageBreak(),...sections([
     ['Planteamiento del problema','Explica el contexto, delimita el problema, formula las preguntas y justifica la investigación.'],['Objetivos','Formula un objetivo general y objetivos específicos verificables.'],['Marco teórico','Sintetiza antecedentes, teorías y conceptos; cita las fuentes utilizadas.'],['Metodología','Describe el enfoque, diseño, muestra, instrumentos, análisis y consideraciones éticas.'],['Resultados','Presenta los hallazgos con tablas, ecuaciones o figuras y sus unidades.'],['Discusión','Interpreta los resultados, contrástalos con la literatura y declara las limitaciones.'],['Conclusiones','Responde a los objetivos sin introducir nuevos resultados.'],['Recomendaciones','Propón aplicaciones y futuras líneas de investigación.']]),bibliography(),h('Anexos',2,false),p('[Incluye instrumentos, autorizaciones y material complementario citado en el texto.]')];
@@ -84,4 +86,15 @@ function utecContent():DocNode[] {
     ...chapters.flatMap(([name,hint,items])=>[pageBreak(),h(name),p(`[Guía del capítulo: ${hint}]`),...items.flatMap(([name,hint])=>[h(name,3),p(`[${hint}]`)])]),
     pageBreak(),bibliography(),pageBreak(),h('ANEXOS',2,false),...annexes.flatMap(([name,hint],i)=>[h(`Anexo ${i+1}: ${name}`,3,false),p(`[${hint} Incluye solo material al que hagas referencia en el texto principal.]`)]),
   ];
+}
+
+function cvContent():DocNode[] {
+  const strong=(text:string):DocNode=>({type:'paragraph',content:[{type:'text',text,marks:[{type:'bold'}]}]});
+  const bullets=(items:string[]):DocNode=>({type:'bulletList',content:items.map(text=>({type:'listItem',content:[p(text)]}))});
+  return [h('[NOMBRE Y APELLIDOS]',1,false),p('[Ciudad, país] · [Teléfono] · [Correo profesional]','center'),p('[LinkedIn o portafolio, si aporta valor]','center'),
+    h('EDUCACIÓN',2,false),strong('[Universidad] — [Ciudad, país]'),p('[Grado y especialidad] · [Mes/año de graduación o fecha prevista]'),p('[Distinciones, tesis o cursos relevantes para el puesto, si corresponde.]'),
+    h('EXPERIENCIA',2,false),strong('[Organización más reciente] — [Ciudad, país]'),p('[Cargo] · [Mes/año de inicio – Mes/año de fin o Actualidad]'),bullets(['[Verbo de acción + responsabilidad o proyecto + resultado verificable.]','[Logro relevante: explica tu aportación y cuantifica el impacto cuando tengas datos.]']),
+    strong('[Organización anterior] — [Ciudad, país]'),p('[Cargo] · [Mes/año – Mes/año]'),bullets(['[Describe una contribución concreta y su resultado, sin inventar cifras.]']),
+    h('LIDERAZGO Y ACTIVIDADES',2,false),strong('[Organización, proyecto o voluntariado]'),p('[Rol] · [Mes/año – Mes/año]'),bullets(['[Explica una iniciativa, colaboración o responsabilidad y su impacto.]']),
+    h('HABILIDADES E INTERESES',2,false),p('Técnicas: [herramientas, lenguajes o métodos relevantes y nivel real].'),p('Idiomas: [idioma y nivel; certificación si corresponde].'),p('Intereses: [actividades específicas que puedas comentar; opcional].')];
 }

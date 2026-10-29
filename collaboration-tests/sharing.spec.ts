@@ -46,6 +46,10 @@ test('two independent browsers merge simultaneous edits, metadata, math, tables 
     await guest.getByLabel('Nombre del documento').fill('Tesis colaborativa'); await expect(page.getByLabel('Nombre del documento')).toHaveValue('Tesis colaborativa');
     await guest.getByRole('button', { name: 'Formato del documento', exact: true }).click(); await guest.getByRole('dialog').getByLabel('Tamaño de página').selectOption('Carta'); await guest.getByRole('button', { name: 'Listo', exact: true }).click(); await expect(page.locator('.paper')).toHaveClass(/letter/);
     await guest.getByRole('button',{name:'Formato del documento',exact:true}).click();await guest.getByRole('dialog').getByLabel('Fuente del documento').selectOption('Times New Roman');await guest.getByRole('dialog').getByLabel('Sangría de primera línea').selectOption('1.25');await guest.getByRole('button',{name:'Listo',exact:true}).click();await expect(page.getByLabel('Tipografía',{exact:true})).toHaveValue('Times New Roman');await expect(page.locator('.paper')).toHaveCSS('--first-indent','1.25cm');
+    await guest.getByRole('button',{name:'Formato del documento',exact:true}).click();
+    await guest.getByRole('dialog').getByLabel('Tamaño de página').selectOption('A1');await expect(page.locator('.paper')).toHaveAttribute('data-page-size','A1');
+    await guest.getByRole('dialog').getByLabel('Tamaño de página').selectOption('Continuo');await expect(page.locator('.paper')).toHaveClass(/continuous-paper/);
+    await guest.getByRole('button',{name:'Listo',exact:true}).click();
     await page.locator('.tiptap').evaluate(el => {
       const editor = (el as HTMLElement & { editor: import('@tiptap/core').Editor }).editor;
       editor.commands.insertContentAt(editor.state.doc.content.size, [{ type: 'blockMath', attrs: { latex: 'E=mc^2' } }, { type: 'paragraph', content: [{ type: 'citation', attrs: { reference: { id: 'doi:10.1038/nphys1170', url: 'https://doi.org/10.1038/nphys1170', title: 'Measured measurement', authors: 'Aspelmeyer, Markus', year: '2009' } } }] }]);

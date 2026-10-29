@@ -9,6 +9,7 @@ const server = await createServer({ configFile:false, optimizeDeps:{noDiscovery:
 try {
   const { exportLatex } = await server.ssrLoadModule('/src/document.ts');
   const { createTemplate, TEMPLATES } = await server.ssrLoadModule('/src/formalDocument.ts');
+  const { PAGE_FORMATS } = await server.ssrLoadModule('/src/pageFormats.ts');
   const { fromCrossref } = await server.ssrLoadModule('/src/doi.ts');
   const fixture = JSON.parse(readFileSync(new URL('../tests/fixtures/crossref.json', import.meta.url), 'utf8'));
   const reference = fromCrossref('10.1038/nphys1170', fixture.message);
@@ -35,6 +36,15 @@ try {
     const log=readFileSync(join(directory,`template-${template.id}.log`),'utf8');
     if(/Undefined control sequence|undefined references|multiply defined|Overfull/i.test(log)) throw new Error(`${template.id}: unresolved template typesetting issue; see ${directory}`);
     console.log(`${template.id}: template PDF compiled with page settings and font fallback.`);
+  }
+  for (const page of PAGE_FORMATS) {
+    const filename=`page-${page.id}.tex`;
+    writeFileSync(join(directory,filename),exportLatex('Página',{type:'doc',content:[p('Prueba de tamaño de página.') ]},[],'apa',{pageSize:page.id}));
+    execFileSync('pdflatex',['-no-shell-escape','-halt-on-error','-interaction=nonstopmode',filename],{cwd:directory,stdio:'pipe',timeout:60000});
+    const info=execFileSync('pdfinfo',[filename.replace('.tex','.pdf')],{cwd:directory,encoding:'utf8'});
+    const size=/Page size:\s+([\d.]+) x ([\d.]+)/.exec(info);
+    if(!size || Math.abs(Number(size[1])-page.width*72/25.4)>0.1 || Math.abs(Number(size[2])-page.height*72/25.4)>0.1) throw new Error(`${page.id}: PDF dimensions do not match the selected page size.`);
+    console.log(`${page.id}: PDF dimensions verified (${page.width} × ${page.height} mm).`);
   }
   const utec=createTemplate('utec');
   writeFileSync(join(directory,'utec-xetex.tex'),exportLatex(utec.title,utec.content,[],utec.citationStyle,utec.format));
