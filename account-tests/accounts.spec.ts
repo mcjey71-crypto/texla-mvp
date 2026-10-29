@@ -65,3 +65,17 @@ test('import uploads only after review and honors the local-only choice and clou
   await open();await convert('local.txt','Contenido solo para este navegador.');await page.getByLabel('Guardar también en mi cuenta').uncheck();await page.getByRole('button',{name:'Crear documento editable'}).click();await expect(page.locator('.save-status')).toContainText('Guardado en este navegador');expect(rows.size).toBe(1);
   await open();await convert('extenso.txt','é'.repeat(550000));await expect(page.getByLabel('Guardar también en mi cuenta')).toBeDisabled();await expect(page.locator('.import-limit')).toContainText('Supera 1 MiB');expect(rows.size).toBe(1);
 });
+
+test('sharing a saved document preserves its account row and reopens the same collaboration on a second device',async({browser,page,context})=>{
+ await setup(context,alice);await page.goto('/');await create(page,'Una sola tesis');const id=[...rows.keys()][0];
+ const count=await page.locator('.document-list>button').count();
+ await page.getByRole('button',{name:'Compartir',exact:true}).click();await page.getByLabel('Servidor de colaboración').fill('http://127.0.0.1:8790');await page.getByRole('button',{name:'Crear enlace de edición'}).click();await expect(page.getByLabel('Enlace de edición')).toBeVisible();await page.getByRole('button',{name:'Cerrar',exact:true}).click();await expect(page.locator('.collaboration-status')).toContainText('Guardado en el servidor');await expect(page.locator('.document-list>button')).toHaveCount(count);
+ await expect.poll(()=>rows.get(id)?.payload.collaboration?.room).toBeTruthy();expect(rows.size).toBe(1);
+ const secondContext=await browser.newContext();await setup(secondContext,alice);const second=await secondContext.newPage();
+ try{
+  await second.goto('/');await second.getByRole('button',{name:'Mi cuenta',exact:true}).click();await second.getByRole('button',{name:/^Una sola tesis/}).click();await expect(second.locator('.collaboration-status')).toContainText('Guardado en el servidor');await expect(second.locator('.tiptap')).toContainText('Contenido privado de la cuenta.');
+  await second.getByLabel('Tipografía',{exact:true}).selectOption('Times New Roman');await expect(page.getByLabel('Tipografía',{exact:true})).toHaveValue('Times New Roman');
+  await second.locator('.tiptap').evaluate(el=>{const editor=(el as HTMLElement&{editor:import('@tiptap/core').Editor}).editor;editor.commands.insertContentAt(editor.state.doc.content.size,{type:'paragraph',content:[{type:'text',text:'Aporte desde otro dispositivo.'}]});});await expect(page.locator('.tiptap')).toContainText('Aporte desde otro dispositivo.');await expect.poll(()=>JSON.stringify(rows.get(id)?.payload.document.content)).toContain('Aporte desde otro dispositivo.');expect(rows.size).toBe(1);
+  await page.getByRole('button',{name:'Compartir',exact:true}).click();await page.getByRole('button',{name:'Dejar de compartir',exact:true}).click();await page.getByRole('button',{name:'Confirmar: dejar de compartir'}).click();await expect(page.locator('.collaboration-status')).toHaveCount(0);await expect.poll(()=>rows.get(id)?.payload.collaboration).toBeUndefined();await expect(page.locator('.save-status')).toContainText('Guardado en tu cuenta');await expect(page.locator('.document-list>button')).toHaveCount(count);expect([...rows.keys()]).toEqual([id]);
+ } finally {await secondContext.close();}
+});

@@ -72,13 +72,13 @@ Son límites de Texla, no promesas de capacidad del plan contratado:
 
 Las cuotas se comprueban dentro de la base de datos, también si alguien intenta omitir la interfaz. El límite global reserva margen para índices y otras estructuras; no mide el tamaño físico total del proyecto, ni sustituye las cuotas de Supabase sobre base de datos, tráfico o autenticación. Revisa el uso real en el panel antes de abrir el registro masivamente. El código no cambia el proyecto a un plan de pago.
 
-Estos topes son independientes de los del [servidor colaborativo Cloudflare](collaboration.md). Los documentos privados no se guardan también en Cloudflare, salvo cuando el usuario crea una versión compartida.
+Estos topes son independientes de los del [servidor colaborativo Cloudflare](collaboration.md). Al compartir, el mismo documento se sincroniza mediante Cloudflare; el registro de la cuenta conserva su identidad y el acceso colaborativo. Las cuotas de ambos servicios siguen aplicándose.
 
 ## Qué sigue pendiente
 
-Esta entrega implementa cuentas y biblioteca privada; **los enlaces de colaboración existentes siguen otorgando edición a quien los tenga**. Iniciar sesión no convierte esos enlaces en invitaciones por correo ni en permisos de solo lectura. Compartir un documento privado crea una versión colaborativa independiente en Cloudflare; guardar una copia privada de un documento compartido no sincroniza ambos continuamente.
+Esta entrega implementa cuentas y biblioteca privada; **los enlaces de colaboración existentes siguen otorgando edición a quien los tenga**. Iniciar sesión no convierte esos enlaces en invitaciones por correo ni en permisos de solo lectura. Compartir conserva el mismo ID y la misma fila de la biblioteca. El contenido colaborativo se sincroniza en Cloudflare; el registro privado de Supabase guarda un acceso y una instantánea para reabrir ese mismo documento desde otra sesión del propietario. El servidor colaborativo es la fuente de los cambios compartidos. Guardar una copia privada mediante la acción explícita de copia sigue creando un documento independiente.
 
-Todavía no hay historial navegable de versiones, copias de seguridad automáticas fuera del proveedor, borrado de cuenta desde Texla, invitaciones nominales ni recuperación de permisos de propietario de un enlace Cloudflare entre dispositivos. Conserva las copias `.texla.json`. Las revisiones de PostgreSQL detectan conflictos; no constituyen un historial recuperable de cada edición.
+Todavía no hay historial navegable de versiones, copias de seguridad automáticas fuera del proveedor, borrado de cuenta desde Texla, invitaciones nominales ni invitaciones con roles por documento. Los accesos compartidos creados desde un documento de la cuenta se recuperan entre dispositivos después de sincronizarse; los enlaces creados sin cuenta siguen dependiendo del navegador que los conserva. Conserva las copias `.texla.json`. Las revisiones de PostgreSQL detectan conflictos; no constituyen un historial recuperable de cada edición.
 
 ## Desarrollo y pruebas
 
@@ -94,3 +94,7 @@ npm run build -- --base=/texla-mvp/
 ```
 
 Las pruebas de cuentas usan respuestas simuladas de Auth/REST y verifican el flujo de la aplicación; las pruebas de políticas ejecutan SQL real en PGlite. El acceso real con Google, la recepción de correo y la aplicación de la migración deben verificarse en el proyecto configurado por el administrador.
+
+## Compartir sin duplicar
+
+El campo `collaboration` del sobre privado `payload` contiene servidor, sala y capacidades de edición/propietario. Solo el dueño de la fila puede leerlo mediante RLS; no se incorpora a las copias descargadas ni a la bibliografía. Se reutiliza la tabla y el procedimiento existentes, sin migración adicional. Al dejar de compartir, se elimina el acceso del registro y se conserva la misma identidad. Si falla la sincronización de la cuenta, se muestra un aviso: el enlace local puede funcionar, pero su recuperación desde otro dispositivo queda pendiente. Las pruebas comprueban el aislamiento RLS también para este campo.

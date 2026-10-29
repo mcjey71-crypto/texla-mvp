@@ -5,10 +5,10 @@ import { join } from 'node:path';
 import { execFileSync } from 'node:child_process';
 
 const directory = mkdtempSync(join(tmpdir(), 'texla-latex-'));
-const server = await createServer({ server: { middlewareMode: true }, logLevel: 'error' });
+const server = await createServer({ configFile:false, optimizeDeps:{noDiscovery:true,include:[]}, cacheDir: join(directory,'vite-cache'), server: { middlewareMode: true }, logLevel: 'error' });
 try {
   const { exportLatex } = await server.ssrLoadModule('/src/document.ts');
-  const { createTemplate } = await server.ssrLoadModule('/src/formalDocument.ts');
+  const { createTemplate, TEMPLATES } = await server.ssrLoadModule('/src/formalDocument.ts');
   const { fromCrossref } = await server.ssrLoadModule('/src/doi.ts');
   const fixture = JSON.parse(readFileSync(new URL('../tests/fixtures/crossref.json', import.meta.url), 'utf8'));
   const reference = fromCrossref('10.1038/nphys1170', fixture.message);
@@ -28,8 +28,21 @@ try {
     if (/Undefined control sequence|undefined references|multiply defined|Overfull|Table widths have changed/i.test(log)) throw new Error(`${style}: unresolved TeX references; see ${directory}`);
     console.log(`${style}: PDF generated successfully, including contents, merged table, citations and equation.`);
   }
+  for (const template of TEMPLATES) {
+    const doc=createTemplate(template.id); const filename=`template-${template.id}.tex`;
+    writeFileSync(join(directory,filename),exportLatex(doc.title,doc.content,[],doc.citationStyle,doc.format));
+    for(let pass=0;pass<2;pass++) execFileSync('pdflatex',['-no-shell-escape','-halt-on-error','-interaction=nonstopmode',filename],{cwd:directory,stdio:'pipe',timeout:60000});
+    const log=readFileSync(join(directory,`template-${template.id}.log`),'utf8');
+    if(/Undefined control sequence|undefined references|multiply defined|Overfull/i.test(log)) throw new Error(`${template.id}: unresolved template typesetting issue; see ${directory}`);
+    console.log(`${template.id}: template PDF compiled with page settings and font fallback.`);
+  }
+  const utec=createTemplate('utec');
+  writeFileSync(join(directory,'utec-xetex.tex'),exportLatex(utec.title,utec.content,[],utec.citationStyle,utec.format));
+  execFileSync('xelatex',['-no-shell-escape','-halt-on-error','-interaction=nonstopmode','utec-xetex.tex'],{cwd:directory,stdio:'pipe',timeout:60000});
+  console.log('UTEC: XeLaTeX font selection and fallback compiled successfully.');
   console.log(`Artifacts: ${directory}`);
 } catch (error) {
+  console.error(error.message);
   if (error.stdout) console.error(error.stdout.toString().slice(-5000));
   console.error(`LaTeX check failed. Requires pdflatex with Spanish babel, longtable, array, booktabs, multirow, xurl and setspace. Artifacts: ${directory}`);
   process.exitCode=1;

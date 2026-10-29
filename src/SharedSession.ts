@@ -2,7 +2,7 @@ import * as Y from 'yjs';
 import { SharedCache } from './SharedCache';
 import { Awareness, applyAwarenessUpdate, encodeAwarenessUpdate, removeAwarenessStates } from 'y-protocols/awareness';
 import { fromBase64, toBase64, sharedId, type SharedAccess } from '../shared/collaboration';
-import { resolveFormat } from './formalDocument';
+import { resolveFormat, FORMAT_KEYS } from './formalDocument';
 import { resolveStyle } from './citationStyles';
 import { validReference, type Reference } from './references';
 
@@ -36,7 +36,7 @@ export class SharedSession {
   private emit = () => { for (const listener of this.listeners) listener(); };
   get people() { return [...this.awareness.getStates().values()].filter(s => typeof s.user?.name === 'string').map(s => s.user as {name:string; color:string}); }
   snapshot() {
-    const format = Object.fromEntries(['pageSize', 'fontSize', 'lineSpacing', 'margin', 'numberedSections'].map(k => [k, this.metadata.get(`format.${k}`)]));
+    const format = Object.fromEntries(FORMAT_KEYS.map(k => [k, this.metadata.get(`format.${k}`)]));
     return { title: String(this.metadata.get('title') || 'Documento compartido').slice(0, 500), citationStyle: resolveStyle(this.metadata.get('citationStyle')), format: resolveFormat(format), references: [...this.references.values()].filter(validReference) };
   }
   async start() {

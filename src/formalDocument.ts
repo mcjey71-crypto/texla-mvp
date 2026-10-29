@@ -1,41 +1,32 @@
-import type { DocNode } from './document';
-import type { CitationStyle } from './citationStyles';
 
-export type DocumentFormat = { pageSize: 'A4' | 'Carta'; fontSize: 11 | 12; lineSpacing: 1 | 1.5 | 2; margin: 2 | 2.5 | 3; numberedSections: boolean };
-export const DEFAULT_FORMAT: DocumentFormat = { pageSize: 'A4', fontSize: 11, lineSpacing: 1.5, margin: 2.5, numberedSections: false };
+import { fontDefinition, type DocumentFont } from './fonts';
+export type DocumentFormat = {
+  pageSize: 'A4' | 'Carta'; fontSize: 10 | 11 | 12; fontFamily: DocumentFont;
+  lineSpacing: 1 | 1.15 | 1.5 | 2; margin: 2 | 2.5 | 2.54 | 3;
+  numberedSections: boolean; sectionStyle: 'sections' | 'chapters';
+  firstLineIndent: 0 | 1.25 | 1.27; paragraphSpacing: 0 | 6;
+  paragraphAlignment: 'left' | 'justify'; headingStyle: 'editorial' | 'formal' | 'apa';
+  pageNumbers: 'bottom' | 'top-right' | 'none'; bibliographyGroups: boolean;
+};
+export const DEFAULT_FORMAT: DocumentFormat = { pageSize: 'A4', fontSize: 11, fontFamily: 'Literata', lineSpacing: 1.5, margin: 2.5, numberedSections: false, sectionStyle: 'sections', firstLineIndent: 0, paragraphSpacing: 6, paragraphAlignment: 'justify', headingStyle: 'editorial', pageNumbers: 'bottom', bibliographyGroups:false };
+export const FORMAT_KEYS = Object.keys(DEFAULT_FORMAT) as (keyof DocumentFormat)[];
 export function resolveFormat(value?: Partial<DocumentFormat>): DocumentFormat {
-  return { pageSize: value?.pageSize === 'Carta' ? 'Carta' : 'A4', fontSize: value?.fontSize === 12 ? 12 : 11,
-    lineSpacing: value?.lineSpacing === 1 || value?.lineSpacing === 2 ? value.lineSpacing : 1.5,
-    margin: value?.margin === 2 || value?.margin === 3 ? value.margin : 2.5, numberedSections: value?.numberedSections === true };
+  return { pageSize: value?.pageSize === 'Carta' ? 'Carta' : 'A4', fontSize: value?.fontSize === 10 || value?.fontSize === 12 ? value.fontSize : 11,
+    fontFamily: fontDefinition(value?.fontFamily).id,
+    lineSpacing: [1,1.15,2].includes(value?.lineSpacing as number) ? value!.lineSpacing! : 1.5,
+    margin: [2,2.54,3].includes(value?.margin as number) ? value!.margin! : 2.5, numberedSections: value?.numberedSections === true,
+    sectionStyle: value?.sectionStyle === 'chapters' ? 'chapters' : 'sections',
+    firstLineIndent: value?.firstLineIndent === 1.25 || value?.firstLineIndent === 1.27 ? value.firstLineIndent : 0,
+    paragraphSpacing: value?.paragraphSpacing === 0 ? 0 : 6, paragraphAlignment: value?.paragraphAlignment === 'left' ? 'left' : 'justify',
+    bibliographyGroups: value?.bibliographyGroups === true,
+    headingStyle: value?.headingStyle === 'formal' || value?.headingStyle === 'apa' ? value.headingStyle : 'editorial', pageNumbers: value?.pageNumbers === 'top-right' || value?.pageNumbers === 'none' ? value.pageNumbers : 'bottom',
+  };
 }
 export function nextSectionNumber(level: number, counters: number[]): string {
   if (level < 2) return '';
-  const depth = Math.min(level - 2, 1);
+  const depth = Math.min(level - 2, 2);
   counters[depth] = (counters[depth] || 0) + 1;
-  if (depth === 0) counters[1] = 0;
-  return counters.slice(0, depth + 1).join('.');
+  for (let i = depth + 1; i < 3; i++) counters[i] = 0;
+  return counters.slice(0, depth + 1).map(n => n || 0).join('.');
 }
-export type TemplateId = 'thesis' | 'article' | 'report';
-export const TEMPLATES: { id: TemplateId; title: string; description: string }[] = [
-  { id: 'thesis', title: 'Tesis', description: 'Resumen, índice, problema, marco teórico, metodología y resultados.' },
-  { id: 'article', title: 'Artículo académico', description: 'Resumen, palabras clave, introducción, métodos, resultados y discusión.' },
-  { id: 'report', title: 'Informe técnico', description: 'Objetivo, alcance, procedimiento, resultados y recomendaciones.' },
-];
-const text = (value: string): DocNode[] => [{ type: 'text', text: value }];
-const paragraph = (value: string): DocNode => ({ type: 'paragraph', attrs: { textAlign: 'justify' }, content: text(value) });
-const heading = (value: string, level = 2): DocNode => ({ type: 'heading', attrs: { level }, content: text(value) });
-export function createTemplate(id: TemplateId): { title: string; content: DocNode; format: DocumentFormat; citationStyle: CitationStyle } {
-  const sections = {
-    thesis: ['Planteamiento del problema', 'Objetivos', 'Marco teórico', 'Metodología', 'Resultados', 'Discusión', 'Conclusiones'],
-    article: ['Introducción', 'Materiales y métodos', 'Resultados', 'Discusión', 'Conclusiones'],
-    report: ['Objetivo y alcance', 'Antecedentes', 'Procedimiento', 'Resultados y análisis', 'Conclusiones', 'Recomendaciones'],
-  }[id];
-  const title = { thesis: 'Mi tesis', article: 'Mi artículo académico', report: 'Mi informe técnico' }[id];
-  return { title, citationStyle: id === 'report' ? 'ieee' : 'apa', format: { ...DEFAULT_FORMAT, fontSize: 12, numberedSections: true }, content: { type: 'doc', content: [
-    heading(title, 1), paragraph('Autoría: escribe tu nombre. Institución: escribe tu institución.'),
-    heading('Resumen'), paragraph('Resume el propósito, el método, los principales resultados y las conclusiones de tu trabajo.'),
-    paragraph('Palabras clave: añade los términos principales de tu investigación.'),
-    ...(id === 'article' ? [] : [{ type: 'tableOfContents' }, { type: 'pageBreak' }]),
-    ...sections.flatMap(section => [heading(section), paragraph(`Desarrolla aquí: ${section.toLowerCase()}.`)]),
-  ] } };
-}
+export { createTemplate, TEMPLATES, type TemplateId } from './templates';

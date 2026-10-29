@@ -6,6 +6,8 @@ async function share(page: Page) {
   await page.getByPlaceholder('Mi próxima gran idea').fill('Investigación en equipo');
   await page.getByRole('button', { name: 'Crear documento' }).click();
   await page.locator('.tiptap p').last().click(); await page.keyboard.type('Introducción compartida.');
+  const originalId = await page.evaluate(()=>JSON.parse(localStorage.getItem('texla-docs-v1')!).find((doc:{title:string})=>doc.title==='Investigación en equipo')?.id);
+  const originalCount = await page.locator('.document-list>button').count();
   await page.getByRole('button', { name: 'Compartir', exact: true }).click();
   await page.getByLabel('Tu nombre para colaborar').fill('Ana');
   await page.getByLabel('Servidor de colaboración').fill('http://127.0.0.1:8787');
@@ -14,6 +16,8 @@ async function share(page: Page) {
   const link = await page.getByLabel('Enlace de edición').inputValue();
   await page.getByRole('button', { name: 'Cerrar', exact: true }).click();
   await expect(page.locator('.collaboration-status')).toContainText('Guardado en el servidor');
+  await expect(page.locator('.document-list>button')).toHaveCount(originalCount);
+  if(originalId) await expect.poll(()=>page.evaluate(()=>JSON.parse(localStorage.getItem('texla-docs-v1')!).find((doc:{shared?:unknown})=>doc.shared)?.id)).toBe(originalId);
   return link;
 }
 async function append(page: Page, text: string) {
@@ -41,6 +45,7 @@ test('two independent browsers merge simultaneous edits, metadata, math, tables 
     await page.getByRole('button', { name: 'Rehacer', exact: true }).click(); await expect(guest.locator('.tiptap')).toContainText('Aporte de Ana.');
     await guest.getByLabel('Nombre del documento').fill('Tesis colaborativa'); await expect(page.getByLabel('Nombre del documento')).toHaveValue('Tesis colaborativa');
     await guest.getByRole('button', { name: 'Formato del documento', exact: true }).click(); await guest.getByRole('dialog').getByLabel('Tamaño de página').selectOption('Carta'); await guest.getByRole('button', { name: 'Listo', exact: true }).click(); await expect(page.locator('.paper')).toHaveClass(/letter/);
+    await guest.getByRole('button',{name:'Formato del documento',exact:true}).click();await guest.getByRole('dialog').getByLabel('Fuente del documento').selectOption('Times New Roman');await guest.getByRole('dialog').getByLabel('Sangría de primera línea').selectOption('1.25');await guest.getByRole('button',{name:'Listo',exact:true}).click();await expect(page.getByLabel('Tipografía',{exact:true})).toHaveValue('Times New Roman');await expect(page.locator('.paper')).toHaveCSS('--first-indent','1.25cm');
     await page.locator('.tiptap').evaluate(el => {
       const editor = (el as HTMLElement & { editor: import('@tiptap/core').Editor }).editor;
       editor.commands.insertContentAt(editor.state.doc.content.size, [{ type: 'blockMath', attrs: { latex: 'E=mc^2' } }, { type: 'paragraph', content: [{ type: 'citation', attrs: { reference: { id: 'doi:10.1038/nphys1170', url: 'https://doi.org/10.1038/nphys1170', title: 'Measured measurement', authors: 'Aspelmeyer, Markus', year: '2009' } } }] }]);
@@ -48,6 +53,7 @@ test('two independent browsers merge simultaneous edits, metadata, math, tables 
     });
     await expect(guest.locator('.tiptap table')).toHaveCount(1); await expect(guest.locator('[data-type="block-math"]')).toHaveAttribute('data-latex', 'E=mc^2'); await expect(guest.locator('.bibliography')).toContainText('Measured measurement');
     await page.locator('[data-type="block-math"]').click();
+    await expect(page.locator('math-field')).toBeVisible();
     await page.getByText('Editar código LaTeX (opcional)', { exact: true }).click(); await page.getByLabel('Código LaTeX').fill('E=mc^3');
     await guest.locator('.tiptap').evaluate(el => { const editor = (el as HTMLElement & { editor: import('@tiptap/core').Editor }).editor; editor.commands.insertContentAt(0, { type: 'paragraph', content: [{ type: 'text', text: 'Cambio antes de la ecuación.' }] }); });
     await expect(page.locator('.tiptap')).toContainText('Cambio antes de la ecuación.');
@@ -118,4 +124,10 @@ test('disabled browser cache warns explicitly while online collaboration keeps w
     await guest.goto(link); await expect(guest.locator('.collaboration-status')).toContainText('Guardado en el servidor'); await expect(guest.locator('.collaboration-status')).toContainText('No se pudo activar la copia sin conexión');
     await append(guest, 'Edición con almacenamiento restringido.'); await expect(page.locator('.tiptap')).toContainText('Edición con almacenamiento restringido.'); expect(errors).toEqual([]);
   } finally { await context.close(); }
+});
+
+test('owner reopening the same link and stopping sharing keep one document',async({page})=>{
+ const link=await share(page);const count=await page.locator('.document-list>button').count();
+ await page.goto(link);await expect(page.locator('.collaboration-status')).toContainText('Guardado en el servidor');await expect(page.locator('.document-list>button')).toHaveCount(count);
+ await page.getByRole('button',{name:'Compartir',exact:true}).click();await page.getByRole('button',{name:'Dejar de compartir',exact:true}).click();await page.getByRole('button',{name:'Confirmar: dejar de compartir'}).click();await expect(page.locator('.collaboration-status')).toHaveCount(0);await expect(page.locator('.document-list>button')).toHaveCount(count);await expect(page.locator('.tiptap')).toContainText('Introducción compartida.');
 });

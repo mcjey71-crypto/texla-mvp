@@ -4,21 +4,21 @@ async function blank(page:import('@playwright/test').Page,title:string) {
  await page.goto('/');await page.getByRole('button',{name:'Nuevo documento'}).click();await page.getByPlaceholder('Mi próxima gran idea').fill(title);await page.getByRole('button',{name:'Crear documento'}).click();await page.locator('.tiptap p').last().click();
 }
 test('thesis headings, contents and format update, persist and export together',async({page})=>{
- const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/');await page.getByRole('button',{name:'Plantillas'}).click();await page.getByRole('button',{name:/^Tesis Resumen/}).click();
+ const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await page.goto('/');await page.getByRole('button',{name:'Plantillas'}).click();await page.getByRole('button',{name:/^Tesis general Resumen/}).click();
  const sections=page.locator('.tiptap h2[data-section-number]');await expect(sections.first()).toHaveAttribute('data-section-number','1');
  await expect(page.locator('.document-contents a').first()).toContainText('Resumen');
- await sections.first().click();await page.keyboard.press('Home');await page.keyboard.press('Shift+End');await page.keyboard.type('Resumen actualizado');
- await expect(page.locator('.document-contents a').first()).toContainText('Resumen actualizado');
+ await sections.first().click();await page.keyboard.press('Home');await page.keyboard.press('Shift+End');await page.keyboard.type('Problema actualizado');
+ await expect(page.locator('.document-contents a').filter({hasText:'Problema actualizado'})).toHaveCount(1);
  await page.waitForTimeout(600);
- await page.locator('.tiptap').evaluate(el=>{const editor=(el as HTMLElement & {editor:import('@tiptap/core').Editor}).editor;let range:{from:number;to:number}|undefined;editor.state.doc.descendants((node,pos)=>{if(!range&&node.type.name==='heading'&&node.attrs.level===2)range={from:pos,to:pos+node.nodeSize};});editor.commands.deleteRange(range!);});
- await expect(sections.first()).toHaveText('Planteamiento del problema');await expect(sections.first()).toHaveAttribute('data-section-number','1');await expect(page.locator('.document-contents')).not.toContainText('Resumen actualizado');
- await page.getByRole('button',{name:'Deshacer',exact:true}).click();await expect(page.locator('.document-contents a').first()).toContainText('Resumen actualizado');
- await sections.nth(2).click();await page.getByLabel('Estilo de párrafo').selectOption('3');await expect(page.locator('.tiptap h3')).toHaveAttribute('data-section-number','2.1');await expect(page.locator('.document-contents .contents-child')).toContainText('Objetivos');
+ await page.locator('.tiptap').evaluate(el=>{const editor=(el as HTMLElement & {editor:import('@tiptap/core').Editor}).editor;let range:{from:number;to:number}|undefined;editor.state.doc.descendants((node,pos)=>{if(!range&&node.type.name==='heading'&&node.attrs.level===2&&node.attrs.numbered!==false)range={from:pos,to:pos+node.nodeSize};});editor.commands.deleteRange(range!);});
+ await expect(sections.first()).toHaveText('Objetivos');await expect(sections.first()).toHaveAttribute('data-section-number','1');await expect(page.locator('.document-contents')).not.toContainText('Problema actualizado');
+ await page.getByRole('button',{name:'Deshacer',exact:true}).click();await expect(page.locator('.document-contents a').filter({hasText:'Problema actualizado'})).toHaveCount(1);
+ await sections.nth(2).click({position:{x:80,y:12}});await page.getByLabel('Estilo de párrafo').selectOption('3');await expect(page.locator('.tiptap h3')).toHaveAttribute('data-section-number','2.1');await expect(page.locator('.document-contents .contents-child')).toContainText('Marco teórico');
  await page.getByRole('button',{name:'Índice automático',exact:true}).click();await expect(page.locator('.document-contents')).toHaveCount(1);
  await page.getByRole('button',{name:'Formato del documento',exact:true}).click();
  await page.getByRole('dialog').getByLabel('Tamaño de página').selectOption('Carta');await page.getByRole('dialog').getByLabel('Márgenes').selectOption('3');await page.getByRole('dialog').getByLabel('Interlineado').selectOption('2');await page.getByRole('button',{name:'Listo',exact:true}).click();
  await page.waitForTimeout(600);await page.reload();await page.getByRole('button',{name:'Mi tesis Guardado en este dispositivo'}).click();await expect(page.locator('.paper')).toHaveClass(/letter/);
- await page.getByRole('button',{name:'LaTeX AUTO'}).click();const tex=page.locator('.latex-panel pre');await expect(tex).toContainText('\\documentclass[12pt,letterpaper]');await expect(tex).toContainText('margin=3cm');await expect(tex).toContainText('\\setstretch{2}');await expect(tex).toContainText('\\section{Resumen actualizado}');await expect(tex).toContainText('\\tableofcontents');
+ await page.getByRole('button',{name:'LaTeX AUTO'}).click();const tex=page.locator('.latex-panel pre');await expect(tex).toContainText('\\documentclass[12pt,letterpaper]');await expect(tex).toContainText('margin=3cm');await expect(tex).toContainText('\\setstretch{2}');await expect(tex).toContainText('\\section{Problema actualizado}');await expect(tex).toContainText('\\tableofcontents');
  await page.getByRole('button',{name:'Editor visual',exact:true}).click();await page.emulateMedia({media:'print'});expect(await page.locator('.page-break').first().evaluate(el=>getComputedStyle(el).breakAfter)).toBe('page');expect(await page.locator('.document-tools').evaluate(el=>getComputedStyle(el).display)).toBe('none');expect(errors).toEqual([]);
 });
 test('visual tables support editing rows and columns, undo and LaTeX',async({page})=>{

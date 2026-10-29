@@ -31,7 +31,7 @@ Los PDF protegidos con contraseña deben desbloquearse antes de importarlos. En 
 - Los textos/HTML intermedios se limitan a un millón de caracteres y la estructura final usa los límites de las copias editables: hasta 5 MB, 50.000 nodos y 30 niveles.
 - El espacio total local depende del navegador. Si no queda espacio, no se sustituye el documento actual.
 - Con sesión iniciada, **Guardar también en mi cuenta** está marcado inicialmente para documentos de hasta 1 MiB. Puedes desmarcarlo para conservar la copia en ese navegador. Los documentos mayores se ofrecen solo como copia local: divídelos para guardarlos en la nube. Se mantienen las cuotas de cuenta y las reglas de acceso de Supabase.
-- El archivo original no se almacena en Supabase ni Cloudflare: solo el contenido convertido, si eliges guardarlo en tu cuenta. Compartir sigue creando una versión colaborativa independiente.
+- El archivo original no se almacena en Supabase ni Cloudflare: solo el contenido convertido, si eliges guardarlo en tu cuenta. Compartir convierte ese mismo documento en colaborativo sin duplicarlo en la biblioteca.
 
 ## Desarrollo
 

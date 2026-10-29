@@ -1,14 +1,23 @@
 import { useState } from 'react';
 import type { Editor } from '@tiptap/core';
 import type { DocumentFormat } from './formalDocument';
+import { FONTS } from './fonts';
 
 export function FormatControls({value,onChange}: {value:DocumentFormat;onChange:(patch:Partial<DocumentFormat>)=>void}) {
   return <div className="format-controls"><label>Tamaño de página<select value={value.pageSize} onChange={e=>onChange({pageSize:e.target.value as DocumentFormat['pageSize']})}><option>A4</option><option>Carta</option></select></label>
-    <label>Tamaño del texto<select value={value.fontSize} onChange={e=>onChange({fontSize:Number(e.target.value) as 11|12})}><option value="11">11 pt</option><option value="12">12 pt</option></select></label>
-    <label>Interlineado<select value={value.lineSpacing} onChange={e=>onChange({lineSpacing:Number(e.target.value) as 1|1.5|2})}><option value="1">Sencillo</option><option value="1.5">1,5 líneas</option><option value="2">Doble</option></select></label>
-    <label>Márgenes<select value={value.margin} onChange={e=>onChange({margin:Number(e.target.value) as 2|2.5|3})}><option value="2">2 cm</option><option value="2.5">2,5 cm</option><option value="3">3 cm</option></select></label>
+    <label>Tamaño del texto<select value={value.fontSize} onChange={e=>onChange({fontSize:Number(e.target.value) as DocumentFormat['fontSize']})}><option value="10">10 pt</option><option value="11">11 pt</option><option value="12">12 pt</option></select></label>
+    <label>Interlineado<select value={value.lineSpacing} onChange={e=>onChange({lineSpacing:Number(e.target.value) as DocumentFormat['lineSpacing']})}><option value="1">Sencillo</option><option value="1.15">1,15 líneas</option><option value="1.5">1,5 líneas</option><option value="2">Doble</option></select></label>
+    <label>Márgenes<select value={value.margin} onChange={e=>onChange({margin:Number(e.target.value) as DocumentFormat['margin']})}><option value="2">2 cm</option><option value="2.5">2,5 cm</option><option value="2.54">2,54 cm (1 pulgada)</option><option value="3">3 cm</option></select></label>
+    <label>Fuente del documento<select value={value.fontFamily} onChange={e=>onChange({fontFamily:e.target.value as DocumentFormat['fontFamily']})}>{FONTS.map(font=><option key={font.id}>{font.id}</option>)}</select></label>
+    <label>Sangría de primera línea<select value={value.firstLineIndent} onChange={e=>onChange({firstLineIndent:Number(e.target.value) as DocumentFormat['firstLineIndent']})}><option value="0">Sin sangría</option><option value="1.25">1,25 cm</option><option value="1.27">1,27 cm (APA)</option></select></label>
+    <label>Espacio entre párrafos<select value={value.paragraphSpacing} onChange={e=>onChange({paragraphSpacing:Number(e.target.value) as 0|6})}><option value="0">0 pt</option><option value="6">6 pt</option></select></label>
+    <label>Alineación predeterminada<select value={value.paragraphAlignment} onChange={e=>onChange({paragraphAlignment:e.target.value as 'left'|'justify'})}><option value="justify">Justificado</option><option value="left">Izquierda</option></select></label>
+    <label>Numeración de páginas<select value={value.pageNumbers} onChange={e=>onChange({pageNumbers:e.target.value as DocumentFormat['pageNumbers']})}><option value="bottom">Abajo, centrada</option><option value="top-right">Arriba, a la derecha</option><option value="none">Sin número</option></select></label>
+    <label>Diseño de títulos<select value={value.headingStyle} onChange={e=>onChange({headingStyle:e.target.value as DocumentFormat['headingStyle']})}><option value="formal">Formal</option><option value="apa">APA (títulos al tamaño del texto)</option><option value="editorial">Editorial</option></select></label>
+    <label>Estructura de numeración<select value={value.sectionStyle} onChange={e=>onChange({sectionStyle:e.target.value as 'chapters'|'sections'})}><option value="sections">Secciones</option><option value="chapters">Capítulos (I, II, III…)</option></select></label>
     <label className="check-label"><input type="checkbox" checked={value.numberedSections} onChange={e=>onChange({numberedSections:e.target.checked})}/> Numerar secciones automáticamente</label>
-    <p>Se guarda con este documento y se aplica a la impresión y a LaTeX. El índice usa los estilos Sección y Subsección. La tipografía del editor puede diferir de la del archivo LaTeX.</p>
+    <label className="check-label"><input type="checkbox" checked={value.bibliographyGroups} onChange={e=>onChange({bibliographyGroups:e.target.checked})}/> Agrupar bibliografía como UTEC (primarias y complementarias)</label>
+    <p>El formato se guarda y se comparte con el documento. Si una fuente no está instalada, se usa una sustituta libre. Para la fuente exacta en LaTeX, usa XeLaTeX o LuaLaTeX con la fuente instalada. Las páginas se numeran al imprimir o compilar.</p>
   </div>;
 }
 export function InsertTable({onInsert}: {onInsert:(rows:number,cols:number)=>void}) {

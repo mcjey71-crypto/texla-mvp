@@ -43,6 +43,15 @@ describe.sequential('database isolation and quotas using PostgreSQL', () => {
     const invalid = payload('Token'); (invalid.document as Record<string,unknown>).shared = {token:'private'};
     await expect(db.query('select public.save_texla_document(gen_random_uuid(),$1::jsonb,0)',[JSON.stringify(invalid)])).rejects.toThrow();
   });
+  it('keeps collaboration access in the same owner-only account row', async () => {
+    await asUser(alice);
+    const shared = {...payload('Tesis con enlace'),collaboration:{server:'https://example.com',room:'a'.repeat(32),token:'b'.repeat(64),ownerToken:'c'.repeat(64)}};
+    const result = await db.query<{save_texla_document:{version:number}}>('select public.save_texla_document($1,$2::jsonb,2)',[id,JSON.stringify(shared)]);
+    expect(result.rows[0].save_texla_document.version).toBe(3);
+    await asUser(bob);expect((await db.query('select payload from public.texla_documents where id=$1',[id])).rows).toHaveLength(0);
+    await db.exec('reset role;set role anon;');await expect(db.query('select payload from public.texla_documents where id=$1',[id])).rejects.toThrow();
+    await asUser(alice);expect((await db.query('select id from public.texla_documents where id=$1',[id])).rows).toHaveLength(1);
+  });
   it('limits account document count and releases quota after deletion', async () => {
     await asUser(bob);
     for(let i=0;i<50;i++) await db.query('select public.save_texla_document(gen_random_uuid(),$1::jsonb,0)',[JSON.stringify(payload(`Doc ${i}`))]);

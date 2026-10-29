@@ -42,10 +42,10 @@ export default function AccountPanel({ session, current, refreshKey, onOpen, onC
     <h2 id="modal-title">{session ? 'Tu biblioteca, contigo.' : 'Un espacio para tus documentos.'}</h2>
     {session ? <>
       <p className="account-email">{session.user.email || 'Sesión iniciada'}</p>
-      <p>Los documentos de tu cuenta son privados. Puedes abrirlos desde otro dispositivo al iniciar sesión.</p>
+      <p>Tu biblioteca es privada. Los documentos que compartas también pueden ser editados por quienes tengan su enlace. Puedes abrirlos desde otro dispositivo al iniciar sesión.</p>
       <div className="account-usage"><strong>{entries.length} / 50 documentos</strong><span>{(used / 1024 / 1024).toFixed(2)} / 10 MiB</span><progress aria-label="Almacenamiento de mi cuenta" value={used} max={10 * 1024 * 1024}/><small>Hasta 1 MiB por documento. Sujeto al espacio disponible del servicio.</small></div>
       {!current.cloud && <button className="primary-button" disabled={busy} onClick={() => onCopy(current)}>{current.shared ? 'Guardar una copia privada' : 'Copiar este documento a mi cuenta'}</button>}
-      {current.shared && <p className="privacy-note">La copia será independiente del documento compartido y no incluirá su enlace de acceso.</p>}
+      {current.shared && !current.cloud && <p className="privacy-note">La copia será independiente del documento compartido y no incluirá su enlace de acceso.</p>}
       <div className="account-library" aria-label="Documentos de mi cuenta">{entries.map(entry => <div className="account-entry" key={entry.id}>
         <button disabled={busy} onClick={() => void open(entry)}><strong>{entry.title || 'Sin título'}</strong><small>{new Date(entry.updated_at).toLocaleDateString('es')} · {(entry.size_bytes / 1024).toFixed(1)} KiB</small></button>
         {confirmDelete === entry.id ? <div><p>¿Eliminar de la nube? La copia abierta en este navegador se conservará.</p><button disabled={busy} onClick={() => void remove(entry)}>Confirmar eliminación</button><button onClick={() => setConfirmDelete(null)}>Cancelar</button></div> : <button aria-label={`Eliminar de la nube: ${entry.title}`} disabled={busy} onClick={() => setConfirmDelete(entry.id)}>Eliminar</button>}

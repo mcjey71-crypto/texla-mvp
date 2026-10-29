@@ -26,10 +26,10 @@ export function toCsl(r: Reference) {
     volume: r.volume || undefined, issue: r.issue || undefined, page: r.pages || undefined, number: r.articleNumber || undefined, publisher: r.publisher || undefined,
     DOI: doi, URL: r.url };
 }
-export type FormattedReferences = { citations: Map<string, string>; html: string; textEntries: string[]; latexEntries: string[]; ids: string[]; hangingIndent: boolean; lineSpacing: number };
+export type FormattedReferences = { citations: Map<string, string>; html: string; htmlEntries: string[]; textEntries: string[]; latexEntries: string[]; ids: string[]; hangingIndent: boolean; lineSpacing: number };
 const cache = new Map<string, FormattedReferences>();
 export function formatReferences(references: Reference[], style: CitationStyle): FormattedReferences {
-  if (!references.length) return { citations: new Map(), html: '', textEntries: [], latexEntries: [], ids: [], hangingIndent: false, lineSpacing: 1 };
+  if (!references.length) return { citations: new Map(), html: '', htmlEntries: [], textEntries: [], latexEntries: [], ids: [], hangingIndent: false, lineSpacing: 1 };
   const key = JSON.stringify([style, references]); const cached = cache.get(key); if (cached) return cached;
   const items = new Map(references.map(r => [r.id, toCsl(r)]));
   // English locale matches the source guides and avoids silently mixing localized variants.
@@ -41,7 +41,12 @@ export function formatReferences(references: Reference[], style: CitationStyle):
   engine.setOutputFormat('html');
   const result = engine.makeBibliography();
   if (!result || !textResult) throw new Error('No se pudo generar la bibliografía. Revisa los datos de las fuentes.');
-  const formatted = { citations, html: result[1].join(''), textEntries: textResult[1], latexEntries: result[1].map(cslHtmlToLatex), ids: result[0].entry_ids.map((entry: string[]) => entry[0]), hangingIndent: !!result[0].hangingindent, lineSpacing: Number(result[0].linespacing) || 1 };
+  const formatted = { citations, html: result[1].join(''), htmlEntries: result[1], textEntries: textResult[1], latexEntries: result[1].map(cslHtmlToLatex), ids: result[0].entry_ids.map((entry: string[]) => entry[0]), hangingIndent: !!result[0].hangingindent, lineSpacing: Number(result[0].linespacing) || 1 };
   if (cache.size >= 6) cache.delete(cache.keys().next().value!);
   cache.set(key, formatted); return formatted;
+}
+
+export function referenceGroups(references: Reference[], formatted: FormattedReferences) {
+  const groups = [{id:'primary',title:'Referencias primarias'},{id:'complementary',title:'Referencias complementarias'},{id:undefined,title:'Referencias sin clasificar'}];
+  return groups.map(group=>({...group,indices:formatted.ids.map((id,index)=>references.find(reference=>reference.id===id)?.group===group.id ? index : -1).filter(index=>index>=0)})).filter(group=>group.id || group.indices.length);
 }

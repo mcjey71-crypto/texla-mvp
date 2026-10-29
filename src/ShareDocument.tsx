@@ -2,7 +2,7 @@ import { useState } from 'react';
 import type { Editor } from '@tiptap/core';
 import * as Y from 'yjs';
 import { prosemirrorJSONToYDoc } from 'y-prosemirror';
-import { MAX_STATE_BYTES, PROTOCOL_VERSION, serverUrl, shareLink, sharedId, toBase64, type SharedAccess } from '../shared/collaboration';
+import { MAX_STATE_BYTES, PROTOCOL_VERSION, serverUrl, shareLink, toBase64, type SharedAccess } from '../shared/collaboration';
 import type { SavedDocument } from './backup';
 import { resolveFormat } from './formalDocument';
 import { resolveStyle } from './citationStyles';
@@ -44,7 +44,7 @@ export default function ShareDocument({ document, editor, session, onCreated, on
       localStorage.setItem(SERVER_KEY, endpoint);
       const result = await request(endpoint, '/rooms', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ state: toBase64(state) }) });
       const shared: SharedAccess = { server: endpoint, room: result.room, token: result.token, ownerToken: result.ownerToken }; setCreatedAccess(shared);
-      onCreated({ ...document, content: editor.getJSON(), id: sharedId(shared), shared, cloud: undefined, updated: Date.now() });
+      onCreated({ ...document, content: editor.getJSON(), shared, ...(document.cloud ? {cloud:{...document.cloud,dirty:true}} : {}), updated: Date.now() });
     } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo compartir. Tu documento local sigue disponible.'); } finally { setBusy(false); }
   }
   async function stop() {
@@ -61,9 +61,9 @@ export default function ShareDocument({ document, editor, session, onCreated, on
       <label className="field-label">Enlace de edición<input readOnly value={link} onFocus={e => e.target.select()}/></label>
       <button className="primary-button" onClick={async () => { try { await navigator.clipboard.writeText(link); setCopied(true); } catch { setError('Selecciona y copia el enlace del campo de arriba.'); } }}>{copied ? 'Enlace copiado' : 'Copiar enlace de edición'}</button>
       {session && <p className="privacy-note">{session.people.length || 1} participante(s) en esta sesión. Hasta 12 conexiones simultáneas por documento.</p>}
-      {access.ownerToken && <div className="stop-sharing">{confirmStop ? <><p>Se desactivará el enlace y se eliminará la copia del servidor. Los participantes conservarán las copias que ya tengan. Tu documento seguirá disponible aquí.</p><button disabled={busy} onClick={() => void stop()}>Confirmar: dejar de compartir</button><button disabled={busy} onClick={() => setConfirmStop(false)}>Cancelar</button></> : <button disabled={busy} onClick={() => setConfirmStop(true)}>Dejar de compartir</button>}<p className="privacy-note">Este navegador conserva el permiso para desactivar el enlace. Las copias descargadas no incluyen permisos de acceso.</p></div>}
+      {access.ownerToken && <div className="stop-sharing">{confirmStop ? <><p>Se desactivará el enlace y se eliminará el estado colaborativo del servidor. Los participantes conservarán las copias que ya tengan. Tu documento seguirá disponible aquí con el mismo nombre e identidad.</p><button disabled={busy} onClick={() => void stop()}>Confirmar: dejar de compartir</button><button disabled={busy} onClick={() => setConfirmStop(false)}>Cancelar</button></> : <button disabled={busy} onClick={() => setConfirmStop(true)}>Dejar de compartir</button>}<p className="privacy-note">{document.cloud ? 'Tu cuenta guarda el acceso a este documento cuando termina la sincronización.' : 'Este navegador conserva el permiso para desactivar el enlace.'} Las copias descargadas no incluyen permisos de acceso.</p></div>}
     </> : <>
-      <div className="share-permission"><strong>Se creará una versión compartida.</strong><p>Tu documento local original se conservará. Los cambios posteriores se harán en la versión compartida.</p></div>
+      <div className="share-permission"><strong>Se compartirá este mismo documento.</strong><p>Seguirá apareciendo una sola vez en tu biblioteca. Todas las personas con el enlace editarán el mismo contenido.</p></div>
       {!configureConnection && <button className="text-button" onClick={() => setConfigureConnection(true)}>Configuración de la conexión</button>}
       {configureConnection && <label className="field-label">Servidor de colaboración<input type="url" value={server} onChange={e => setServer(e.target.value)} placeholder="https://texla-collaboration.tu-cuenta.workers.dev"/></label>}
       {!server && <p className="setup-note">La colaboración necesita activar el servidor gratuito de Texla en Cloudflare. El administrador configura esta dirección una sola vez; quienes reciban un enlace no necesitan hacerlo. <a href="https://github.com/mcjey71-crypto/texla-mvp/blob/main/docs/collaboration.md" target="_blank" rel="noreferrer">Guía de activación</a>.</p>}

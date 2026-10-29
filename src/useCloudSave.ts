@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type Dispatch, type SetStateAction } from 'react';
 import type { Session } from '@supabase/supabase-js';
-import { makeBackup, type SavedDocument } from './backup';
-import { saveCloudDocument } from './cloudDocuments';
+import type { SavedDocument } from './backup';
+import { saveCloudDocument, cloudFingerprint } from './cloudDocuments';
 import { accountError } from './supabase';
 
 export function useCloudSave(session: Session | null, docs: SavedDocument[], setDocs: Dispatch<SetStateAction<SavedDocument[]>>) {
@@ -16,14 +16,14 @@ export function useCloudSave(session: Session | null, docs: SavedDocument[], set
     async function flush() {
       if (stopped || running.current || !navigator.onLine) return;
       const { session, docs } = latest.current;
-      const candidate = session && docs.find(d => d.cloud?.ownerId === session.user.id && d.cloud.dirty && !d.shared && !blocked.current.has(d.id));
+      const candidate = session && docs.find(d => d.cloud?.ownerId === session.user.id && d.cloud.dirty && !blocked.current.has(d.id));
       if (!session || !candidate) return;
       running.current = true; setSaving(candidate.id);
-      const snapshot = makeBackup(candidate);
+      const snapshot = cloudFingerprint(candidate);
       try {
         const result = await saveCloudDocument(session, candidate, AbortSignal.any([controller.signal, AbortSignal.timeout(20000)]));
         if (!stopped) {
-          setDocs(prev => prev.map(d => d.id === candidate.id && d.cloud?.ownerId === session.user.id ? { ...d, cloud: { ...d.cloud, revision: result.version, dirty: makeBackup(d) !== snapshot } } : d));
+          setDocs(prev => prev.map(d => d.id === candidate.id && d.cloud?.ownerId === session.user.id ? { ...d, cloud: { ...d.cloud, revision: result.version, dirty: cloudFingerprint(d) !== snapshot, stoppedSharing: cloudFingerprint(d) === snapshot ? undefined : d.cloud.stoppedSharing } } : d));
           setErrors(prev => { const next = { ...prev }; delete next[candidate.id]; return next; });
         }
       } catch (error) {

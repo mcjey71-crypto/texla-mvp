@@ -4,7 +4,7 @@ import { validReference } from './references';
 import { resolveStyle, type CitationStyle } from './citationStyles';
 import { resolveFormat, type DocumentFormat } from './formalDocument';
 import type { SharedAccess } from '../shared/collaboration';
-export type SavedDocument = { id: string; title: string; content: DocNode; references?: Reference[]; citationStyle?: CitationStyle; format?: DocumentFormat; updated: number; shared?: SharedAccess; cloud?: { ownerId: string; revision: number; dirty: boolean } };
+export type SavedDocument = { id: string; title: string; content: DocNode; references?: Reference[]; citationStyle?: CitationStyle; format?: DocumentFormat; updated: number; shared?: SharedAccess; cloud?: { ownerId: string; revision: number; dirty: boolean; stoppedSharing?: SharedAccess } };
 export const MAX_BACKUP_BYTES = 5 * 1024 * 1024;
 export function makeBackup(doc: SavedDocument): string {
   return JSON.stringify({application:'texla-docs',version:1,document:{title:doc.title,content:doc.content,references:doc.references||[],citationStyle:resolveStyle(doc.citationStyle),format:resolveFormat(doc.format)}},null,2);

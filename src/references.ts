@@ -5,6 +5,7 @@ export type Reference = {
   id: string; url: string; title: string; authors: string; year: string;
   people?: Person[]; type?: string; journal?: string; journalAbbreviation?: string;
   volume?: string; issue?: string; pages?: string; articleNumber?: string; publisher?: string;
+  group?: 'primary' | 'complementary';
   issued?: number[]; doi?: string; source?: 'Crossref' | 'DataCite'; retrievedAt?: string;
 };
 
@@ -40,6 +41,7 @@ export function validReference(value: unknown): value is Reference {
   return typeof r.id === 'string' && typeof r.url === 'string' && typeof r.title === 'string'
     && typeof r.authors === 'string' && typeof r.year === 'string'
     && ['type','journal','journalAbbreviation','volume','issue','pages','articleNumber','publisher','doi','retrievedAt'].every(key => (r as Record<string, unknown>)[key] === undefined || typeof (r as Record<string, unknown>)[key] === 'string')
+    && (r.group === undefined || r.group === 'primary' || r.group === 'complementary')
     && (r.people === undefined || Array.isArray(r.people) && r.people.every(p => p && typeof p === 'object' && ['family','given','literal'].every(key => (p as Record<string, unknown>)[key] === undefined || typeof (p as Record<string, unknown>)[key] === 'string')))
     && (r.issued === undefined || Array.isArray(r.issued) && r.issued.length <= 3 && r.issued.every(n => Number.isInteger(n) && n > 0))
     && (() => { try { return normalizeReferenceLink(r.url).id === r.id; } catch { return false; } })();

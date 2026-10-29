@@ -11,7 +11,7 @@
   "observability": { "enabled": false },
   "env": {
     "test": {
-      "vars": { "ALLOWED_ORIGINS": "http://127.0.0.1:5173,http://localhost:5173" },
+      "vars": { "ALLOWED_ORIGINS": "http://127.0.0.1:5173,http://localhost:5173,http://127.0.0.1:5176" },
       "durable_objects": { "bindings": [{ "name": "ROOMS", "class_name": "DocumentRoom" }] },
       "ratelimits": [{ "name": "CREATION_LIMIT", "namespace_id": "10172", "simple": { "limit": 100, "period": 60 } }]
     }

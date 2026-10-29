@@ -1,6 +1,7 @@
 import { resolveFormat, type DocumentFormat } from './formalDocument';
 import { tableToLatex } from './tableLatex';
-import { formatReferences, type CitationStyle } from './citationStyles';
+import { fontLatex } from './fonts';
+import { formatReferences, referenceGroups, type CitationStyle } from './citationStyles';
 import { citedReferences, type Reference } from './references';
 export type DocNode = { type: string; text?: string; attrs?: Record<string, any>; marks?: { type: string; attrs?: Record<string, any> }[]; content?: DocNode[] };
 // ChatGPT, Claude and other tools commonly emit these four math delimiters.
@@ -19,25 +20,27 @@ export function parseMathText(text: string): DocNode[] {
   appendText(text.slice(end)); flush(); return blocks.length ? blocks : [{ type: 'paragraph' }];
 }
 const escapeTex = (s: string) => s.replace(/[\\{}$&#%_~^]/g, c => ({ '\\': '\\textbackslash{}', '{': '\\{', '}': '\\}', '$': '\\$', '&': '\\&', '#': '\\#', '%': '\\%', '_': '\\_', '~': '\\textasciitilde{}', '^': '\\textasciicircum{}' }[c]!));
-export function nodeToLatex(node: DocNode, citationNumbers: Map<string, number> = new Map(), citationLabels?: Map<string, string>, format = resolveFormat()): string {
+export function nodeToLatex(node: DocNode, citationNumbers: Map<string, number> = new Map(), citationLabels?: Map<string, string>, format = resolveFormat(), bibliographyContent = ''): string {
   if (node.type === 'text') { let text = escapeTex(node.text || ''); for (const mark of node.marks || []) { if (mark.type === 'bold') text = `\\textbf{${text}}`; if (mark.type === 'italic') text = `\\textit{${text}}`; if (mark.type === 'underline') text = `\\underline{${text}}`; } return text; }
   if (node.type === 'citation') { const number = citationNumbers.get(node.attrs?.reference?.id); return number ? citationLabels ? `\\hyperlink{ref${number}}{${escapeTex(citationLabels.get(node.attrs?.reference?.id) || '[?]')}}` : `\\cite{ref${number}}` : '[referencia no disponible]'; }
   if (node.type === 'inlineMath') return `$${node.attrs?.latex || ''}$`;
   if (node.type === 'blockMath') return `\n\\begin{equation}\n${node.attrs?.latex || ''}\n\\end{equation}\n`;
-  if (node.type === 'table') return tableToLatex(node, child => nodeToLatex(child, citationNumbers, citationLabels, format));
+  if (node.type === 'bibliographyAnchor') return bibliographyContent || `\\section*{Referencias bibliográficas}\n\\phantomsection\n\\addcontentsline{toc}{section}{Referencias bibliográficas}\n${format.bibliographyGroups ? '\\subsection*{Referencias primarias}\n\\subsection*{Referencias complementarias}\n' : ''}`;
+  if (node.type === 'table') return tableToLatex(node, child => nodeToLatex(child, citationNumbers, citationLabels, format, bibliographyContent));
   if (node.type === 'tableOfContents') return '\\tableofcontents\n';
   if (node.type === 'pageBreak') return '\\clearpage\n';
-  const inner = (node.content || []).map(child => nodeToLatex(child, citationNumbers, citationLabels, format)).join('');
+  const inner = (node.content || []).map(child => nodeToLatex(child, citationNumbers, citationLabels, format, bibliographyContent)).join('');
   switch (node.type) {
     case 'heading': {
       if (node.attrs?.level === 1) return `\n\\section*{${inner}}\n`;
-      const command = node.attrs?.level === 2 ? 'section' : 'subsection';
-      return `\n\\${command}${format.numberedSections ? '' : '*'}{${inner}}\n${format.numberedSections ? '' : `\\addcontentsline{toc}{${command}}{${inner}}\n`}`;
+      const command = node.attrs?.level === 2 ? 'section' : node.attrs?.level === 3 ? 'subsection' : 'subsubsection';
+      const numbered = format.numberedSections && node.attrs?.numbered !== false;
+      return `\n\\${command}${numbered ? '' : '*'}{${inner}}\n${numbered ? '' : `\\phantomsection\n\\addcontentsline{toc}{${command}}{${inner}}\n`}`;
     }
     case 'paragraph': {
       // LaTeX paragraphs are justified by default. Scope other alignments so
       // they cannot change the following justified paragraph.
-      const alignment = { left: '\\raggedright', center: '\\centering', right: '\\raggedleft' }[node.attrs?.textAlign as 'left' | 'center' | 'right'];
+      const alignment = { left: '\\raggedright', center: '\\centering', right: '\\raggedleft' }[(node.attrs?.textAlign || format.paragraphAlignment) as 'left' | 'center' | 'right'];
       return alignment ? `\\begingroup${alignment}\n${inner}\\par\\endgroup\n\n` : `${inner}\n\n`;
     }
     case 'bulletList': return `\\begin{itemize}\n${inner}\\end{itemize}\n`;
@@ -54,11 +57,17 @@ export function exportLatex(title: string, content: DocNode, library: Reference[
   const references = citedReferences(content, library);
   const numbers = new Map(references.map((ref, index) => [ref.id, index + 1]));
   const formatted = formatReferences(references, style);
-  const bibliography = references.length ? `\n\\clearpage\n${style === 'apa' ? '\\begin{center}\\textbf{Referencias}\\end{center}' : '\\section*{Referencias}'}\n\\begingroup\n\\setlength{\\parindent}{0pt}\n${style === 'apa' ? '\\begin{spacing}{2}\n' : ''}${formatted.latexEntries.map((entry, i) => {
+  const entry = (i: number) => {
     const number = numbers.get(formatted.ids[i]);
-    return `${style === 'apa' ? '\\hangindent=1.27cm\\hangafter=1 ' : ''}\\hypertarget{ref${number}}{}${entry}\\par${style === 'apa' ? '' : '\\medskip'}`;
-  }).join('\n')}\n${style === 'apa' ? '\\end{spacing}\n' : ''}\\endgroup\n` : '';
-  return `\\documentclass[${format.fontSize}pt,${format.pageSize === 'Carta' ? 'letterpaper' : 'a4paper'}]{article}\n\\usepackage[utf8]{inputenc}\n\\usepackage[T1]{fontenc}\n\\usepackage[spanish]{babel}\n\\usepackage{amsmath,amssymb}\n\\usepackage[hidelinks]{hyperref}\n\\usepackage{xurl}\n\\urlstyle{same}\n\\usepackage{setspace}\n\\usepackage{longtable,array,booktabs,multirow}\n\\usepackage[margin=${format.margin}cm]{geometry}\n\\setstretch{${format.lineSpacing}}\n\\title{${escapeTex(title)}}\n\\date{}\n\\begin{document}\n${nodeToLatex(content, numbers, formatted.citations, format)}${bibliography}\n\\end{document}\n`;
+    return `${style === 'apa' ? '\\hangindent=1.27cm\\hangafter=1 ' : ''}\\hypertarget{ref${number}}{}${formatted.latexEntries[i]}\\par${style === 'apa' ? '' : '\\medskip'}`;
+  };
+  const entries = format.bibliographyGroups ? referenceGroups(references,formatted).map(group=>`\\subsection*{${group.title}}\n${group.indices.map(entry).join('\n')}`).join('\n') : formatted.ids.map((_,i)=>entry(i)).join('\n');
+  const bibliography = references.length ? `\n\\clearpage\n${style === 'apa' ? '\\begin{center}\\textbf{Referencias}\\end{center}' : '\\section*{Referencias}'}\n\\phantomsection\n\\addcontentsline{toc}{section}{Referencias}\n\\begingroup\n\\setlength{\\parindent}{0pt}\n${style === 'apa' ? '\\begin{spacing}{2}\n' : ''}${entries}\n${style === 'apa' ? '\\end{spacing}\n' : ''}\\endgroup\n` : '';
+
+  const anchored = (node: DocNode): boolean => node.type === 'bibliographyAnchor' || !!node.content?.some(anchored);
+  const structure = format.headingStyle !== 'editorial' ? `\\usepackage{titlesec}\n\\titleformat{\\section}${format.sectionStyle === 'chapters' ? '[display]' : ''}{\\centering\\bfseries${format.headingStyle === 'apa' ? '\\normalsize' : '\\fontsize{16}{20}\\selectfont'}}{${format.sectionStyle === 'chapters' ? 'CAPÍTULO \\Roman{section}' : '\\thesection'}}{0.5em}{}\n\\titleformat{\\subsection}{\\bfseries\\normalsize}{\\thesubsection}{0.5em}{}\n\\titleformat{\\subsubsection}{\\bfseries\\normalsize}{\\thesubsubsection}{0.5em}{}\n` : '';
+  const pageNumbers = format.pageNumbers === 'none' ? '\\pagestyle{empty}\n' : format.pageNumbers === 'top-right' ? '\\usepackage{fancyhdr}\n\\pagestyle{fancy}\n\\fancyhf{}\n\\fancyhead[R]{\\thepage}\n\\renewcommand{\\headrulewidth}{0pt}\n\\setlength{\\headheight}{15pt}\n' : '\\pagestyle{plain}\n';
+  return `\\documentclass[${format.fontSize}pt,${format.pageSize === 'Carta' ? 'letterpaper' : 'a4paper'}]{article}\n${fontLatex(format.fontFamily)}\\usepackage[spanish]{babel}\n\\usepackage{amsmath,amssymb}\n\\usepackage{xurl}\n\\urlstyle{same}\n\\usepackage{setspace}\n\\usepackage{longtable,array,booktabs,multirow}\n\\usepackage[margin=${format.margin}cm]{geometry}\n\\setstretch{${format.lineSpacing}}\n\\setlength{\\parindent}{${format.firstLineIndent}cm}\n\\setlength{\\parskip}{${format.paragraphSpacing}pt}\n${format.firstLineIndent ? '\\usepackage{indentfirst}\n' : ''}${structure}${pageNumbers}\\usepackage[hidelinks]{hyperref}\n\\setlength{\\emergencystretch}{2em}\n\\title{${escapeTex(title)}}\n\\date{}\n\\begin{document}\n${nodeToLatex(content, numbers, formatted.citations, format, bibliography)}${anchored(content) ? '' : bibliography}\n\\end{document}\n`;
 }
 export const initialContent: DocNode = { type: 'doc', content: [
  { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'El lenguaje del universo' }] },
