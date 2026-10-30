@@ -106,3 +106,7 @@ La opción Eliminar de la nube dentro de Mi cuenta conserva su comportamiento es
 ## Imágenes y figuras
 
 Pulsa **Imagen** para subir PNG, JPG o WebP, ajustar ancho/alineación y añadir pie, fuente y descripción. Las figuras se numeran automáticamente y se incluyen en PDF, copias editables y exportación LaTeX con imágenes en un ZIP. La carga local funciona directamente; para cuentas y enlaces compartidos, ejecuta la migración de Storage indicada en [la guía de imágenes](docs/images.md). Hasta 20 figuras por documento, 10 MiB por archivo original y 1 MiB por imagen optimizada. Los archivos se guardan fuera del JSON del documento. Borrar figuras o documentos no elimina automáticamente sus archivos, para conservar otras copias y deshacer.
+
+## Despejar pantalla
+
+Pulsa **Despejar pantalla** junto a las pestañas del editor para redactar viendo solo la página. Se ocultan los paneles, barras y adornos de la interfaz, y el guardado automático continúa. Los avisos de problemas de guardado o conexión siguen visibles. Vuelve con **Mostrar herramientas** o **Esc**; **Ctrl/⌘ + Mayús + Enter** alterna entre ambas vistas. Si hay un diálogo o una búsqueda abiertos, el primer Esc los cierra. Funciona también en móvil y no cambia el formato ni la exportación del documento.
