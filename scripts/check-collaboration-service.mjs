@@ -1,6 +1,7 @@
 // Read-only release check. It never creates documents or sends stored user content.
 import assert from 'node:assert/strict';
 
+try {
 const endpoint = new URL(process.env.VITE_COLLABORATION_URL);
 const origin = 'https://mcjey71-crypto.github.io';
 assert.equal(endpoint.protocol, 'https:', 'The collaboration server must use HTTPS.');
@@ -23,3 +24,9 @@ assert.ok(preflight.headers.get('access-control-allow-methods')?.split(',').map(
 assert.ok(preflight.headers.get('access-control-allow-headers')?.toLowerCase().split(',').map(header => header.trim()).includes('content-type'));
 console.log('Collaboration service responds correctly and allows requests from the Texla website.');
 if (process.env.REQUIRE_VOICE === '1') console.log('The published server supports the walkie-talkie protocol.');
+
+} catch (error) {
+  // Surface a concise diagnosis in Actions annotations without exposing credentials.
+  if (process.env.GITHUB_ACTIONS) console.error('::error::'+String(error.message).replaceAll('%','%25').replaceAll('\r','%0D').replaceAll('\n','%0A'));
+  throw error;
+}
