@@ -161,3 +161,9 @@
 @media(max-width:760px){.view-actions{gap:0}.focus-toggle{font-size:10px;padding:6px;gap:5px}.focus-exit{min-height:40px;right:12px}.focus-exit kbd{display:none}}
 @media screen and (max-width:760px){.focus-mode .canvas{padding:8px 10px 24px}}
 @media print{.focus-exit,.focus-toggle{display:none!important}}
+
+/* Room audio is opt-in and remains reachable while the editor is in focus mode. */
+.walkie-panel{display:flex;align-items:center;flex-wrap:wrap;gap:8px 16px;flex-shrink:0;padding:10px 24px;background:#f5f7f0;border-bottom:1px solid #dce4d5;font-size:11px;color:#405c43}
+.walkie-heading{display:flex;align-items:center;gap:7px}.walkie-heading>span{font-size:10px;color:#74836b}.walkie-panel p{margin:0;line-height:1.6}.walkie-panel small{color:#7b876f;font-size:9px;line-height:1.6}.walkie-join{background:#e4edda;border:1px solid #bccdab;padding:8px 12px;border-radius:5px;font-size:11px;color:#355a35}.walkie-controls{display:flex;gap:7px;align-items:center}.walkie-talk{display:flex;align-items:center;justify-content:center;gap:8px;min-height:40px;padding:9px 14px;border:1px solid #a7b99a;border-radius:6px;background:#fffefa;color:#355438;font-size:11px;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}.walkie-sending .walkie-talk{background:#315e42;color:#fff;border-color:#315e42}.walkie-icon{display:grid;place-items:center;min-width:36px;min-height:36px;border:1px solid #d6dfcd;border-radius:5px}.walkie-icon[aria-pressed=true]{background:#efe4d8;color:#795c3f}.walkie-error{flex-basis:100%;color:#9b4838}.walkie-status{min-width:150px}
+@media(max-width:760px){.walkie-panel{padding:9px 12px;gap:7px 12px}.walkie-controls{width:100%}.walkie-talk{flex:1;min-height:44px;font-size:10px;padding:9px}.walkie-icon{min-height:40px;min-width:40px}.walkie-panel small{font-size:8px}}
+@media print{.walkie-panel{display:none!important}}

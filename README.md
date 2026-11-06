@@ -110,3 +110,7 @@ Pulsa **Imagen** para subir PNG, JPG o WebP, ajustar ancho/alineación y añadir
 ## Despejar pantalla
 
 Pulsa **Despejar pantalla** junto a las pestañas del editor para redactar viendo solo la página. Se ocultan los paneles, barras y adornos de la interfaz, y el guardado automático continúa. Los avisos de problemas de guardado o conexión siguen visibles. Vuelve con **Mostrar herramientas** o **Esc**; **Ctrl/⌘ + Mayús + Enter** alterna entre ambas vistas. Si hay un diálogo o una búsqueda abiertos, el primer Esc los cierra. Funciona también en móvil y no cambia el formato ni la exportación del documento.
+
+## Walkie-talkie
+
+En documentos compartidos, cada participante puede activar el walkie-talkie y mantener pulsado para hablar; una persona transmite por turno, hasta 30 segundos. Incluye silenciamiento, cierre del micrófono al salir y controles en el modo despejado. El audio es temporal y no se incorpora al documento ni sus copias. Requiere el servidor de colaboración actualizado y consume sus cuotas; consulta [activación, funcionamiento y límites](docs/walkie-talkie.md).

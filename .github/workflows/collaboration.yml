@@ -1,6 +1,15 @@
 name: Publish collaboration server
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - 'server/**'
+      - 'shared/collaboration.ts'
+      - 'shared/voice.ts'
+      - 'wrangler.jsonc'
+      - 'scripts/check-collaboration-service.mjs'
+      - '.github/workflows/collaboration.yml'
   workflow_dispatch:
 
 permissions:
@@ -22,6 +31,10 @@ jobs:
       - run: npm ci
       - run: npm run collab:check
       - run: npm test
+      - name: Verify collaboration and walkie-talkie in browsers
+        run: |
+          npx playwright install --with-deps chromium
+          CHROMIUM_PATH="$(node -p "require('playwright').chromium.executablePath()")" npm run test:collaboration
       - name: Deploy to Cloudflare Workers
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -33,3 +46,13 @@ jobs:
             exit 1
           fi
           npm run collab:deploy
+      - name: Verify published walkie-talkie support
+        env:
+          VITE_COLLABORATION_URL: ${{ vars.VITE_COLLABORATION_URL || 'https://texla-collaboration.mcjey71.workers.dev' }}
+          REQUIRE_VOICE: '1'
+        run: |
+          for attempt in 1 2 3; do
+            if node scripts/check-collaboration-service.mjs; then exit 0; fi
+            sleep 5
+          done
+          exit 1

@@ -1,10 +1,11 @@
+import { VOICE_VERSION, VOICE_LEASE_MS, VOICE_MAX_TURN_MS, VOICE_SAMPLES, validTurn, validVoiceData } from '../shared/voice';
 import { DurableObject } from 'cloudflare:workers';
 import * as Y from 'yjs';
 import * as decoding from 'lib0/decoding';
 import { fromBase64, toBase64, MAX_STATE_BYTES, MAX_MESSAGE_BYTES, PROTOCOL_VERSION } from '../shared/collaboration';
 
 interface Env { ROOMS: DurableObjectNamespace<DocumentRoom>; ALLOWED_ORIGINS: string; CREATION_LIMIT: RateLimit }
-type Attachment = { authenticated: boolean; created: number; clientId?: number; awareness?: string; window?: number; messages?: number };
+type Attachment = { authenticated: boolean; created: number; clientId?: number; awareness?: string; window?: number; messages?: number; voicePeer?: string; voiceName?: string; voiceTurn?: string; voiceStarted?: number; voiceUntil?: number; voiceWindow?: number; voiceMessages?: number };
 type Row = { state: ArrayBuffer; edit_hash: string; owner_hash: string; revoked: number };
 const json = (data: unknown, status = 200) => Response.json(data, { status });
 const randomHex = (size: number) => Array.from(crypto.getRandomValues(new Uint8Array(size)), b => b.toString(16).padStart(2, '0')).join('');
@@ -28,7 +29,7 @@ export default {
     let response: Response;
     try {
       const url = new URL(request.url);
-      if (url.pathname === '/health' && request.method === 'GET') response = json({ service: 'texla-collaboration', version: PROTOCOL_VERSION });
+      if (url.pathname === '/health' && request.method === 'GET') response = json({ service: 'texla-collaboration', version: PROTOCOL_VERSION, voiceVersion: VOICE_VERSION });
       else if (url.pathname === '/rooms' && request.method === 'POST') {
         const limit = await env.CREATION_LIMIT.limit({ key: request.headers.get('CF-Connecting-IP') || 'local' });
         if (!limit.success) response = json({ error: 'Demasiados documentos nuevos. Inténtalo en un minuto.' }, 429);
@@ -111,6 +112,7 @@ export class DocumentRoom extends DurableObject<Env> {
     try {
       if (typeof raw !== 'string' || raw.length > MAX_MESSAGE_BYTES || !this.row || this.row.revoked) throw new Error('Mensaje no permitido.');
       const message = JSON.parse(raw); const attachment = ws.deserializeAttachment() as Attachment;
+      if (attachment.authenticated && typeof message.type==='string' && message.type.startsWith('voice:')) { await this.voiceMessage(ws, attachment, message); return; }
       const window = Math.floor(Date.now() / 1000); attachment.messages = attachment.window === window ? (attachment.messages || 0) + 1 : 1; attachment.window = window;
       if (attachment.messages > 60) { ws.close(4008, 'Demasiados cambios por segundo.'); return; }
       ws.serializeAttachment(attachment);
@@ -118,8 +120,8 @@ export class DocumentRoom extends DurableObject<Env> {
         if (message.type !== 'auth' || !/^[a-f0-9]{64}$/.test(message.token) || await hash(message.token) !== this.row.edit_hash || !Number.isSafeInteger(message.clientId)) { ws.close(4003, 'El enlace no es válido o fue desactivado.'); return; }
         // Another request may revoke the document while hashing the capability.
         if (this.row.revoked) { ws.close(4003, 'El documento ya no está compartido.'); return; }
-        attachment.authenticated = true; attachment.clientId = message.clientId; ws.serializeAttachment(attachment);
-        ws.send(JSON.stringify({ type: 'sync', state: toBase64(Y.encodeStateAsUpdate(this.doc)), vector: toBase64(Y.encodeStateVector(this.doc)) }));
+        attachment.authenticated = true; attachment.clientId = message.clientId; attachment.voicePeer = randomHex(16); ws.serializeAttachment(attachment);
+        ws.send(JSON.stringify({ type: 'sync', voiceVersion: VOICE_VERSION, voicePeer: attachment.voicePeer, state: toBase64(Y.encodeStateAsUpdate(this.doc)), vector: toBase64(Y.encodeStateVector(this.doc)) }));
         for (const peer of this.ctx.getWebSockets()) { const a = peer.deserializeAttachment() as Attachment; if (peer !== ws && a.authenticated && a.awareness) ws.send(JSON.stringify({ type: 'awareness', data: a.awareness })); }
         return;
       }
@@ -143,11 +145,62 @@ export class DocumentRoom extends DurableObject<Env> {
       } else throw new Error('Protocolo no compatible.');
     } catch { ws.close(4002, 'No se pudo procesar el cambio. Conserva una copia local.'); }
   }
-  webSocketClose(ws: WebSocket) { const a = ws.deserializeAttachment() as Attachment; if (a.authenticated) this.broadcast({ type: 'leave', clientId: a.clientId }, ws); ws.close(); }
+  webSocketClose(ws: WebSocket) { const a = ws.deserializeAttachment() as Attachment; if (a.authenticated) this.broadcast({ type: 'leave', clientId: a.clientId }, ws); if(a.voiceName){delete a.voiceName;delete a.voiceTurn;delete a.voiceUntil;ws.serializeAttachment(a);this.voiceState();} ws.close(); }
   webSocketError(ws: WebSocket) { this.webSocketClose(ws); }
+  private voiceState() {
+    const peers:{id:string;name:string}[]=[];let floor:{peer:string;turn:string;started:number}|null=null;
+    for(const socket of this.ctx.getWebSockets()){
+      const a=socket.deserializeAttachment() as Attachment;
+      if(a.authenticated&&a.voiceName&&a.voicePeer){peers.push({id:a.voicePeer,name:a.voiceName});if(a.voiceTurn&&(a.voiceUntil||0)>Date.now())floor={peer:a.voicePeer,turn:a.voiceTurn,started:a.voiceStarted!};}
+    }
+    const message=JSON.stringify({type:'voice:state',peers,floor});
+    for(const socket of this.ctx.getWebSockets())if(socket.deserializeAttachment()?.voiceName){try{socket.send(message);}catch{}}
+  }
+  private async voiceAlarm() {
+    const next=Date.now()+VOICE_LEASE_MS;
+    const alarm=await this.ctx.storage.getAlarm();if(!alarm||alarm>next)await this.ctx.storage.setAlarm(next);
+  }
+  private async voiceMessage(ws:WebSocket,a:Attachment,m:Record<string,unknown>) {
+    const reject=(message:string)=>ws.send(JSON.stringify({type:'voice:error',message}));
+    const window=Math.floor(Date.now()/1000);a.voiceMessages=a.voiceWindow===window?(a.voiceMessages||0)+1:1;a.voiceWindow=window;
+    ws.serializeAttachment(a);
+    if(a.voiceMessages>60){ws.close(4008,'Demasiados mensajes de audio.');return;}
+    if(a.voiceMessages>25){if(a.voiceName){delete a.voiceName;delete a.voiceTurn;delete a.voiceUntil;ws.serializeAttachment(a);this.voiceState();reject('El audio se detuvo por demasiados mensajes. Vuelve a activar el walkie-talkie.');}return;}
+    if(m.type==='voice:join'){
+      if(typeof m.name!=='string'||!m.name.trim()||m.name.length>60){reject('Nombre de participante no válido.');return;}
+      a.voiceName=m.name.trim();ws.serializeAttachment(a);this.voiceState();return;
+    }
+    if(!a.voiceName){reject('Activa el walkie-talkie antes de hablar.');return;}
+    if(m.type==='voice:leave'){
+      delete a.voiceName;delete a.voiceTurn;delete a.voiceUntil;ws.serializeAttachment(a);this.voiceState();return;
+    }
+    if(!validTurn(m.turn)){reject('Turno de audio no válido.');return;}
+    if(m.type==='voice:stop'){
+      if(a.voiceTurn===m.turn){delete a.voiceTurn;delete a.voiceUntil;ws.serializeAttachment(a);this.voiceState();}return;
+    }
+    if(m.type==='voice:take'){
+      const occupied=this.ctx.getWebSockets().some(socket=>{const peer=socket.deserializeAttachment() as Attachment;return peer.voiceName&&peer.voiceTurn&&(peer.voiceUntil||0)>Date.now();});
+      if(occupied){this.voiceState();return;}
+      a.voiceTurn=m.turn;a.voiceStarted=Date.now();a.voiceUntil=Date.now()+VOICE_LEASE_MS;ws.serializeAttachment(a);this.voiceState();await this.voiceAlarm();return;
+    }
+    if(m.type==='voice:audio'){
+      if(a.voiceTurn!==m.turn||(a.voiceUntil||0)<=Date.now())return;
+      if(Date.now()-(a.voiceStarted||0)>=VOICE_MAX_TURN_MS){delete a.voiceTurn;delete a.voiceUntil;ws.serializeAttachment(a);this.voiceState();return;}
+      if(!validVoiceData(m.data)){reject('Formato de audio no válido.');return;}
+      const bytes=fromBase64(m.data);if(bytes.byteLength!==VOICE_SAMPLES*2){reject('Paquete de audio no válido.');return;}
+      a.voiceUntil=Math.min(Date.now()+VOICE_LEASE_MS,a.voiceStarted!+VOICE_MAX_TURN_MS);ws.serializeAttachment(a);
+      const packet=JSON.stringify({type:'voice:audio',peer:a.voicePeer,turn:a.voiceTurn,data:m.data});
+      for(const peer of this.ctx.getWebSockets())if(peer!==ws&&peer.deserializeAttachment()?.voiceName){try{peer.send(packet);}catch{}}
+      return;
+    }
+    reject('Mensaje de audio no compatible.');
+  }
   async alarm() {
+    let voiceExpired=false;let voiceActive=false;
+    for(const ws of this.ctx.getWebSockets()){const a=ws.deserializeAttachment() as Attachment;if(a.voiceTurn){if((a.voiceUntil||0)<=Date.now()){delete a.voiceTurn;delete a.voiceUntil;ws.serializeAttachment(a);voiceExpired=true;}else voiceActive=true;}}
+    if(voiceExpired)this.voiceState();
     let pending = false;
     for (const ws of this.ctx.getWebSockets()) { const a = ws.deserializeAttachment() as Attachment; if (!a.authenticated) { if (Date.now() - a.created >= 14000) ws.close(4003, 'Conexión sin autenticar.'); else pending = true; } }
-    if (pending) await this.ctx.storage.setAlarm(Date.now() + 15000);
+    if (pending||voiceActive) await this.ctx.storage.setAlarm(Date.now() + (voiceActive?VOICE_LEASE_MS:15000));
   }
 }

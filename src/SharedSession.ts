@@ -1,3 +1,4 @@
+import {VOICE_VERSION,type VoiceMessage,type VoiceCommand} from '../shared/voice';
 import * as Y from 'yjs';
 import { SharedCache, sharedCacheName } from './SharedCache';
 import { Awareness, applyAwarenessUpdate, encodeAwarenessUpdate, removeAwarenessStates } from 'y-protocols/awareness';
@@ -14,6 +15,12 @@ export class SharedSession {
   readonly references = this.doc.getMap<Reference>('references');
   state: ConnectionState = 'connecting';
   ready = false;
+  voiceAvailable=false;
+  voicePeer='';
+  private voiceListeners=new Set<(message:VoiceMessage)=>void>();
+  subscribeVoice(listener:(message:VoiceMessage)=>void){this.voiceListeners.add(listener);return()=>{this.voiceListeners.delete(listener);};}
+  get voiceConnected(){return this.authenticated&&!this.stopped&&this.state!=='blocked';}
+  sendVoice(message:VoiceCommand){if(!this.voiceAvailable||!this.voiceConnected||this.socket?.readyState!==WebSocket.OPEN||this.socket.bufferedAmount>65536)return false;this.socket.send(JSON.stringify(message));return true;}
   error = '';
   cacheError = false;
   private listeners = new Set<() => void>();
@@ -67,7 +74,9 @@ export class SharedSession {
       if (event.data === 'pong') { this.lastPong = Date.now(); return; }
       try {
         const message = JSON.parse(event.data);
+        if(typeof message.type==='string'&&message.type.startsWith('voice:')){for(const listener of this.voiceListeners){try{listener(message);}catch{/* Audio failure must not stop document synchronization. */}}return;}
         if (message.type === 'sync') {
+          this.voiceAvailable=message.voiceVersion===VOICE_VERSION;this.voicePeer=typeof message.voicePeer==='string'?message.voicePeer:'';
           clearTimeout(this.handshake); this.authenticated = true; this.attempts = 0;
           Y.applyUpdate(this.doc, fromBase64(message.state), this);
           this.ready = true; this.state = 'saving';
@@ -109,7 +118,7 @@ export class SharedSession {
   private onAwareness = (_: unknown, origin: unknown) => { if (origin !== this) this.sendAwareness(); };
   setName(name: string) { this.awareness.setLocalState({ ...this.awareness.getLocalState(), user: { name: name.trim().slice(0, 60) || 'Invitado', color: ['#376e53', '#80599c', '#ae6440', '#356e9b'][this.doc.clientID % 4] } }); }
   destroy() {
-    this.stopped = true; clearTimeout(this.retry); clearTimeout(this.flushTimer); clearTimeout(this.handshake); clearInterval(this.heartbeat);
+    this.stopped = true; this.emit(); this.voiceListeners.clear(); clearTimeout(this.retry); clearTimeout(this.flushTimer); clearTimeout(this.handshake); clearInterval(this.heartbeat);
     window.removeEventListener('online', this.reconnect); window.removeEventListener('offline', this.disconnect); this.awareness.setLocalState(null); this.socket?.close();
     this.doc.off('update', this.onUpdate); this.awareness.off('update', this.onAwareness); this.awareness.off('change', this.emit); this.listeners.clear();
     this.awareness.destroy(); void this.persistence?.destroy(); this.doc.destroy();

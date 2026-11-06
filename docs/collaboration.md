@@ -13,7 +13,7 @@ Antes de cada publicación, GitHub Actions comprueba la respuesta `/health`, la 
 1. Crea una cuenta en [Cloudflare](https://dash.cloudflare.com/sign-up) y utiliza **Workers Free**. No hace falta comprar un dominio: se usa `workers.dev`. Si es tu primer Worker, configura el subdominio de Workers de la cuenta.
 2. En Cloudflare, copia el **Account ID** de la cuenta que alojará Texla. En tu perfil → **API Tokens**, crea un token usando la plantilla **Edit Cloudflare Workers**, limitado a esa cuenta. El token permite desplegar código: no lo pegues en chats, documentos ni en el código fuente.
 3. En [Settings → Secrets and variables → Actions](https://github.com/mcjey71-crypto/texla-mvp/settings/secrets/actions), añade el token como **Repository secret** llamado `CLOUDFLARE_API_TOKEN`. En la pestaña **Variables**, añade `CLOUDFLARE_ACCOUNT_ID` con el identificador de cuenta.
-4. En [Actions → Publish collaboration server](https://github.com/mcjey71-crypto/texla-mvp/actions/workflows/collaboration.yml), pulsa **Run workflow** sobre `main`. Esto crea el Worker y su almacenamiento SQLite de Durable Objects. Solo se ejecuta manualmente; los commits de la página no lo despliegan automáticamente.
+4. En [Actions → Publish collaboration server](https://github.com/mcjey71-crypto/texla-mvp/actions/workflows/collaboration.yml), pulsa **Run workflow** sobre `main`. Esto crea el Worker y su almacenamiento SQLite de Durable Objects. También se ejecuta automáticamente cuando cambia el servidor o su protocolo en `main`; los cambios exclusivamente visuales de la página no lo despliegan.
 5. Al finalizar, copia la dirección HTTPS que muestra el paso **Deploy to Cloudflare Workers**, por ejemplo `https://texla-collaboration.tu-subdominio.workers.dev`.
 6. Abre [Texla Docs](https://mcjey71-crypto.github.io/texla-mvp/), pulsa **Compartir**, introduce esa dirección y tu nombre, y pulsa **Crear enlace de edición**. El navegador recuerda el servidor. Comparte el enlace de edición con tu equipo.
 7. Para que nadie tenga que configurar la dirección al crear nuevos documentos, añade también la **variable de Actions** `VITE_COLLABORATION_URL` con esa URL y vuelve a ejecutar **Publish Texla Docs to GitHub Pages**. Es una dirección pública, no una contraseña.
@@ -94,3 +94,7 @@ Las pruebas de colaboración levantan la aplicación y el Worker local y utiliza
 Crear el enlace convierte el documento abierto en colaborativo y conserva su ID; no añade otra entrada en la biblioteca. Abrir de nuevo el mismo enlace reutiliza esa entrada. Dejar de compartir conserva el documento y su contenido actual. La fuente elegida y todos los ajustes de formato se sincronizan con el equipo.
 
 Las copias independientes creadas por versiones anteriores no se eliminan automáticamente: pueden contener cambios distintos y no existe un vínculo fiable que permita decidir cuál descartar. Compartir ya no genera nuevas duplicaciones.
+
+## Conversación por voz
+
+Los documentos compartidos incluyen un walkie-talkie con activación voluntaria, micrófono con pulsación mantenida, turnos exclusivos y control de escucha. Requiere publicar el Worker actualizado. Consulta [uso, despliegue, privacidad y consumo de recursos](walkie-talkie.md).

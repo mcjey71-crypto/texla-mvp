@@ -12,6 +12,7 @@ assert.equal(health.headers.get('access-control-allow-origin'), origin, 'The ser
 const data = await health.json();
 assert.equal(data.service, 'texla-collaboration');
 assert.equal(data.version, 1, 'The server protocol is incompatible with this client.');
+if (process.env.REQUIRE_VOICE === '1') assert.equal(data.voiceVersion, 1, 'The published server does not yet support the walkie-talkie.');
 const preflight = await fetch(new URL('/rooms', endpoint), {
   method: 'OPTIONS', headers: { Origin: origin, 'Access-Control-Request-Method': 'POST', 'Access-Control-Request-Headers': 'content-type' },
   signal: AbortSignal.timeout(20000), redirect: 'error',
@@ -21,3 +22,4 @@ assert.equal(preflight.headers.get('access-control-allow-origin'), origin);
 assert.ok(preflight.headers.get('access-control-allow-methods')?.split(',').map(method => method.trim()).includes('POST'));
 assert.ok(preflight.headers.get('access-control-allow-headers')?.toLowerCase().split(',').map(header => header.trim()).includes('content-type'));
 console.log('Collaboration service responds correctly and allows requests from the Texla website.');
+if (process.env.REQUIRE_VOICE === '1') console.log('The published server supports the walkie-talkie protocol.');
