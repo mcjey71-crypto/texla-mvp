@@ -1,8 +1,10 @@
 // Read-only release check. It never creates documents or sends stored user content.
 import assert from 'node:assert/strict';
 
+let serviceOrigin='';
 try {
 const endpoint = new URL(process.env.VITE_COLLABORATION_URL);
+serviceOrigin=endpoint.origin;
 const origin = 'https://mcjey71-crypto.github.io';
 assert.equal(endpoint.protocol, 'https:', 'The collaboration server must use HTTPS.');
 const health = await fetch(new URL('/health', endpoint), {
@@ -27,6 +29,6 @@ if (process.env.REQUIRE_VOICE === '1') console.log('The published server support
 
 } catch (error) {
   // Surface a concise diagnosis in Actions annotations without exposing credentials.
-  if (process.env.GITHUB_ACTIONS) console.error('::error::'+String(error.message).replaceAll('%','%25').replaceAll('\r','%0D').replaceAll('\n','%0A'));
+  if (process.env.GITHUB_ACTIONS) console.error('::error::'+serviceOrigin+' — '+String(error.message).replaceAll('%','%25').replaceAll('\r','%0D').replaceAll('\n','%0A'));
   throw error;
 }

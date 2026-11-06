@@ -32,9 +32,14 @@ jobs:
       - run: npm run collab:check
       - run: npm test
       - name: Verify collaboration and walkie-talkie in browsers
+        timeout-minutes: 8
         run: |
-          npx playwright install --with-deps chromium
-          CHROMIUM_PATH="$(node -p "require('playwright').chromium.executablePath()")" npm run test:collaboration
+          texla_browser="$(command -v google-chrome || command -v chromium || true)"
+          if [ -z "$texla_browser" ]; then
+            npx playwright install --with-deps chromium
+            texla_browser="$(node -p "require('playwright').chromium.executablePath()")"
+          fi
+          CHROMIUM_PATH="$texla_browser" npm run test:collaboration -- --reporter=line,github
       - name: Deploy to Cloudflare Workers
         env:
           CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
@@ -45,7 +50,14 @@ jobs:
             echo 'Configura CLOUDFLARE_API_TOKEN como secret y CLOUDFLARE_ACCOUNT_ID como variable. Consulta docs/collaboration.md.'
             exit 1
           fi
-          npm run collab:deploy
+          set -o pipefail
+          npm run collab:deploy | tee "$RUNNER_TEMP/texla-worker-deploy.log"
+          node --input-type=module <<'JS'
+          import {readFileSync} from 'node:fs';
+          const log=readFileSync(process.env.RUNNER_TEMP+'/texla-worker-deploy.log','utf8');
+          const url=log.match(/https:\/\/texla-collaboration\.[a-z0-9-]+\.workers\.dev\b/);
+          if(url)console.log('::notice::Collaboration Worker published at '+url[0]);
+          JS
       - name: Verify published walkie-talkie support
         env:
           VITE_COLLABORATION_URL: ${{ vars.VITE_COLLABORATION_URL || 'https://texla-collaboration.mcjey71.workers.dev' }}
