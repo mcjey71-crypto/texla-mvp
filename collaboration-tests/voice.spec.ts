@@ -42,24 +42,33 @@ test('server enforces exclusive turns, membership, leases and ephemeral audio',a
  const link=await share(page);const access=JSON.parse(decodeURIComponent(new URL(link).hash.slice(7)));
  const result=await page.evaluate(async access=>{
   const wait=(ms:number)=>new Promise(resolve=>setTimeout(resolve,ms));
-  async function peer(room=access.room){return await new Promise<{ws:WebSocket;messages:any[];id:string;initial:any}>((resolve,reject)=>{const ws=new WebSocket(access.server.replace('http','ws')+'/rooms/'+room+'/socket');const messages:any[]=[];ws.onopen=()=>ws.send(JSON.stringify({type:'auth',token:access.token,clientId:Math.floor(Math.random()*10000000)}));ws.onerror=reject;ws.onmessage=e=>{if(e.data==='pong'){messages.push('pong');return;}const m=JSON.parse(e.data);messages.push(m);if(m.type==='sync')resolve({ws,messages,id:m.voicePeer,initial:m});};});}
-  const a=await peer(),b=await peer(),observer=await peer();const send=(p:typeof a,m:any)=>p.ws.send(JSON.stringify(m));
+  async function until(check:()=>boolean,label:string){const deadline=Date.now()+5000;while(!check()){if(Date.now()>deadline)throw new Error('Timed out waiting for '+label);await wait(20);}}
+  async function peer(){return await new Promise<{ws:WebSocket;messages:any[];id:string;initial:any}>((resolve,reject)=>{
+   const ws=new WebSocket(access.server.replace('http','ws')+'/rooms/'+access.room+'/socket');const messages:any[]=[];
+   const timeout=setTimeout(()=>{ws.close();reject(new Error('Audio test socket did not authenticate'));},5000);
+   ws.onopen=()=>ws.send(JSON.stringify({type:'auth',token:access.token,clientId:Math.floor(Math.random()*10000000)}));
+   ws.onerror=()=>{clearTimeout(timeout);reject(new Error('Audio test socket failed'));};ws.onclose=event=>{clearTimeout(timeout);reject(new Error('Audio test socket closed before sync: '+event.code));};
+   ws.onmessage=e=>{if(e.data==='pong'){messages.push('pong');return;}const m=JSON.parse(e.data);messages.push(m);if(m.type==='sync'){clearTimeout(timeout);resolve({ws,messages,id:m.voicePeer,initial:m});}};
+  });}
+  const a=await peer(),b=await peer(),observer=await peer();const send=(p:typeof a,m:any)=>p.ws.send(JSON.stringify(m));const state=(p:typeof a)=>p.messages.filter(m=>m.type==='voice:state').at(-1);
   try{
-   send(a,{type:'voice:join',name:'A'});send(b,{type:'voice:join',name:'B'});await wait(100);
-   const first=crypto.randomUUID(),second=crypto.randomUUID();send(a,{type:'voice:take',turn:first});send(b,{type:'voice:take',turn:second});await wait(120);
-   const state=a.messages.filter(m=>m.type==='voice:state').at(-1);const leader=state.floor.peer===a.id?a:b;const listener=leader===a?b:a;const turn=state.floor.turn;
+   send(a,{type:'voice:join',name:'A'});send(b,{type:'voice:join',name:'B'});await until(()=>state(a)?.peers.length===2&&state(b)?.peers.length===2,'both voice participants');
+   send(a,{type:'voice:take',turn:crypto.randomUUID()});send(b,{type:'voice:take',turn:crypto.randomUUID()});await until(()=>!!state(a)?.floor&&!!state(b)?.floor,'exclusive turn');
+   const floor=state(a).floor;const leader=floor.peer===a.id?a:b;const listener=leader===a?b:a;const turn=floor.turn;
    const raw=new Uint8Array(3200);for(let i=0;i<raw.length;i++)raw[i]=i%255;const data=btoa(String.fromCharCode(...raw));
-   const before=listener.messages.filter(m=>m.type==='voice:audio').length;
-   send(listener,{type:'voice:audio',turn,data});await wait(80);const spoofed=leader.messages.filter(m=>m.type==='voice:audio').length;
-   send(leader,{type:'voice:audio',turn,data});await wait(120);
-   const delivered=listener.messages.filter(m=>m.type==='voice:audio').length-before;
-   const observed=observer.messages.filter(m=>m.type==='voice:audio').length;
-   send(leader,{type:'voice:audio',turn,data:'bad'});await wait(80);leader.ws.send('ping');await wait(80);const healthy=leader.messages.includes('pong');
+   send(listener,{type:'voice:audio',turn,data});send(leader,{type:'voice:audio',turn,data});await until(()=>listener.messages.some(m=>m.type==='voice:audio'),'authorized audio');
+   const spoofed=leader.messages.filter(m=>m.type==='voice:audio').length;const delivered=listener.messages.filter(m=>m.type==='voice:audio').length;const observed=observer.messages.filter(m=>m.type==='voice:audio').length;
+   send(leader,{type:'voice:audio',turn,data:'bad'});leader.ws.send('ping');await until(()=>leader.messages.includes('pong'),'editing transport after malformed audio');const healthy=true;
    const reload=await peer();const unchanged=reload.initial.state===a.initial.state;reload.ws.close();
-   await wait(2300);send(listener,{type:'voice:take',turn:crypto.randomUUID()});await wait(120);const recovered=listener.messages.filter(m=>m.type==='voice:state').at(-1).floor?.peer===listener.id;
-   send(listener,{type:'voice:leave'});await wait(80);const released=leader.messages.filter(m=>m.type==='voice:state').at(-1).floor===null;
-   const abuser=await peer();const closed=new Promise<number>(resolve=>{abuser.ws.onclose=event=>resolve(event.code);});for(let i=0;i<70;i++)send(abuser,{type:'voice:join',name:'Rate test'});const rateCode=await closed;
-   return {rateCode,oneSpeaker:!!state.floor&&[a.id,b.id].includes(state.floor.peer),spoofed,delivered,observed,healthy,unchanged,recovered,released};
+   await until(()=>state(listener)?.floor===null,'expired voice lease');send(listener,{type:'voice:take',turn:crypto.randomUUID()});await until(()=>state(listener)?.floor?.peer===listener.id,'new turn after expiration');const recovered=true;
+   send(listener,{type:'voice:leave'});await until(()=>state(leader)?.floor===null,'turn released on leave');const released=true;
+   const abuser=await peer();const rateCode=await new Promise<number>((resolve,reject)=>{
+    // Sustain an excessive rate rather than assume one batch lands in a single wall-clock second.
+    const burst=()=>{if(abuser.ws.readyState===WebSocket.OPEN)for(let i=0;i<80;i++)send(abuser,{type:'voice:join',name:'Rate test'});};
+    const interval=setInterval(burst,100);const timeout=setTimeout(()=>{clearInterval(interval);abuser.ws.close();reject(new Error('Server did not close sustained excessive audio traffic'));},5000);
+    abuser.ws.onclose=event=>{clearInterval(interval);clearTimeout(timeout);resolve(event.code);};burst();
+   });
+   return {rateCode,oneSpeaker:[a.id,b.id].includes(floor.peer),spoofed,delivered,observed,healthy,unchanged,recovered,released};
   }finally{a.ws.close();b.ws.close();observer.ws.close();}
  },access);
  expect(result).toEqual({rateCode:4008,oneSpeaker:true,spoofed:0,delivered:1,observed:0,healthy:true,unchanged:true,recovered:true,released:true});

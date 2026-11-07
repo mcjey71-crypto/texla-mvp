@@ -14,6 +14,7 @@ export class WalkieSession {
   pending = false;
   muted = false;
   error = "";
+  notice = "";
   peers: VoicePeer[] = [];
   floor: VoiceFloor | null = null;
   private listeners = new Set<() => void>();
@@ -64,6 +65,7 @@ export class WalkieSession {
   async join() {
     if (this.busy || this.active || this.destroyed) return;
     this.error = "";
+    this.notice = "";
     if (!this.session.voiceConnected || !this.session.voiceAvailable) {
       this.error =
         "El servidor de este documento necesita la actualización de audio.";
@@ -220,6 +222,7 @@ export class WalkieSession {
     )
       return;
     this.error = "";
+    this.notice = "";
     this.wanted = true;
     this.pending = true;
     this.turn = crypto.randomUUID();
@@ -278,7 +281,7 @@ export class WalkieSession {
           clearTimeout(this.timer);
           this.timer = setTimeout(() => {
             this.release();
-            this.error =
+            this.notice =
               "Turno de 30 segundos terminado. Puedes volver a pulsar para continuar.";
             this.emit();
           }, VOICE_MAX_TURN_MS);

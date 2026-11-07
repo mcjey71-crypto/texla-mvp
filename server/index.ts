@@ -162,7 +162,8 @@ export class DocumentRoom extends DurableObject<Env> {
   }
   private async voiceMessage(ws:WebSocket,a:Attachment,m:Record<string,unknown>) {
     const reject=(message:string)=>ws.send(JSON.stringify({type:'voice:error',message}));
-    const window=Math.floor(Date.now()/1000);a.voiceMessages=a.voiceWindow===window?(a.voiceMessages||0)+1:1;a.voiceWindow=window;
+    // A rolling interval avoids a double burst across a wall-clock second boundary.
+    const now=Date.now();if(!a.voiceWindow||now-a.voiceWindow>=1000){a.voiceWindow=now;a.voiceMessages=0;}a.voiceMessages=(a.voiceMessages||0)+1;
     ws.serializeAttachment(a);
     if(a.voiceMessages>60){ws.close(4008,'Demasiados mensajes de audio.');return;}
     if(a.voiceMessages>25){if(a.voiceName){delete a.voiceName;delete a.voiceTurn;delete a.voiceUntil;ws.serializeAttachment(a);this.voiceState();reject('El audio se detuvo por demasiados mensajes. Vuelve a activar el walkie-talkie.');}return;}
