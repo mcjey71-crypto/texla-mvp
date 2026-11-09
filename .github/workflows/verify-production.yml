@@ -1,0 +1,39 @@
+name: Verify published Texla and live audio
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'production-tests/**'
+      - 'playwright.production.config.ts'
+      - '.github/workflows/verify-production.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: texla-production-audit
+  cancel-in-progress: false
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      VITE_COLLABORATION_URL: ${{ vars.VITE_COLLABORATION_URL || 'https://texla-collaboration.mcjey71.workers.dev' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+      - run: npm ci
+      - name: Test the published website and real audio relay
+        run: |
+          texla_browser="$(command -v google-chrome || command -v chromium || true)"
+          if [ -z "$texla_browser" ]; then
+            npx playwright install --with-deps chromium
+            texla_browser="$(node -p "require('playwright').chromium.executablePath()")"
+          fi
+          CHROMIUM_PATH="$texla_browser" npx playwright test --config playwright.production.config.ts --reporter=line,github

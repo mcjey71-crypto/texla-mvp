@@ -1,0 +1,171 @@
+import { test, expect, type Page } from '@playwright/test';
+import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+
+const directory = mkdtempSync(join(tmpdir(), 'texla-live-voice-'));
+const wav = join(directory, 'microphone.wav');
+const server = process.env.VITE_COLLABORATION_URL || 'https://texla-collaboration.mcjey71.workers.dev';
+test.use({
+  permissions: ['microphone'],
+  launchOptions: {
+    executablePath: process.env.CHROMIUM_PATH || '/usr/bin/chromium',
+    args: ['--no-sandbox', '--use-fake-device-for-media-stream', '--use-fake-ui-for-media-stream', `--use-file-for-fake-audio-capture=${wav}`],
+  },
+});
+test.beforeAll(() => {
+  const samples = 48000 * 4;
+  const bytes = Buffer.alloc(44 + samples * 2);
+  bytes.write('RIFF'); bytes.writeUInt32LE(bytes.length - 8, 4); bytes.write('WAVEfmt ', 8);
+  bytes.writeUInt32LE(16, 16); bytes.writeUInt16LE(1, 20); bytes.writeUInt16LE(1, 22);
+  bytes.writeUInt32LE(48000, 24); bytes.writeUInt32LE(96000, 28);
+  bytes.writeUInt16LE(2, 32); bytes.writeUInt16LE(16, 34); bytes.write('data', 36); bytes.writeUInt32LE(samples * 2, 40);
+  for (let i = 0; i < samples; i++) bytes.writeInt16LE(Math.round(10000 * Math.sin(2 * Math.PI * 440 * i / 48000)), 44 + i * 2);
+  writeFileSync(wav, bytes);
+});
+test.afterAll(() => rmSync(directory, { recursive: true, force: true }));
+
+async function probe(page: Page) {
+  await page.addInitScript(() => {
+    const state = (window as any).__texlaAudit = { sent: 0, streams: [] as MediaStream[], analysers: [] as AnalyserNode[] };
+    const originalSend = WebSocket.prototype.send;
+    WebSocket.prototype.send = function(data) {
+      if (typeof data === 'string' && data.includes('"type":"voice:audio"')) state.sent++;
+      return originalSend.call(this, data);
+    };
+    const originalGet = navigator.mediaDevices.getUserMedia.bind(navigator.mediaDevices);
+    navigator.mediaDevices.getUserMedia = async constraints => {
+      const stream = await originalGet(constraints); state.streams.push(stream); return stream;
+    };
+    const originalGain = AudioContext.prototype.createGain;
+    AudioContext.prototype.createGain = function() {
+      const node = originalGain.call(this); const analyser = this.createAnalyser();
+      node.connect(analyser); state.analysers.push(analyser); return node;
+    };
+  });
+}
+async function energy(page: Page) {
+  return page.evaluate(() => {
+    let maximum = 0;
+    for (const analyser of (window as any).__texlaAudit.analysers as AnalyserNode[]) {
+      const samples = new Float32Array(analyser.fftSize); analyser.getFloatTimeDomainData(samples);
+      for (const sample of samples) maximum = Math.max(maximum, Math.abs(sample));
+    }
+    return maximum;
+  });
+}
+
+test('published editor loads and reports the enabled login providers', async ({ page }) => {
+  const errors: string[] = [];
+  page.on('pageerror', error => errors.push(error.name));
+  await page.goto('./');
+  await expect(page.locator('.tiptap')).toBeVisible();
+  const settings = page.waitForResponse(response => new URL(response.url()).pathname === '/auth/v1/settings');
+  await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
+  const response = await settings;
+  expect(response.status()).toBe(200);
+  const data = await response.json();
+  const google = !!data.external?.google, email = !!data.external?.email;
+  console.log(`::notice::Published login settings: Google=${google}; email=${email}. Email delivery and real OAuth consent are not exercised.`);
+  expect(google || email).toBe(true);
+  if (google) await expect(page.getByRole('button', { name: 'Continuar con Google', exact: true })).toBeVisible();
+  if (email) await expect(page.getByLabel('Tu correo electrónico')).toBeVisible();
+  expect(errors).toEqual([]);
+});
+
+test('live voice crosses the published server in both directions and stops when released', async ({ page, browser, request }, testInfo) => {
+  const origin = new URL(testInfo.project.use.baseURL!).origin;
+  const health = await request.get(server + '/health', { headers: { Origin: origin } });
+  expect(health.status()).toBe(200);
+  expect(health.headers()['access-control-allow-origin']).toBe(origin);
+  expect((await health.json()).voiceVersion).toBe(1);
+  const guestContext = await browser.newContext({ permissions: ['microphone'] });
+  const guest = await guestContext.newPage();
+  await probe(page); await probe(guest);
+  const pageErrors: string[] = [];
+  page.on('pageerror', error => pageErrors.push(error.name));
+  guest.on('pageerror', error => pageErrors.push(error.name));
+  let created: { room: string; ownerToken: string } | undefined;
+  // Capture only the temporary room created by this test, including on a later UI failure.
+  page.on('response', response => {
+    if (response.url() === server + '/rooms' && response.request().method() === 'POST' && response.status() === 201) {
+      void response.json().then(data => { created = data; }).catch(() => {});
+    }
+  });
+  try {
+    await test.step('Create an isolated test document on the published website', async () => {
+      await page.goto('./');
+      await page.getByRole('button', { name: 'Nuevo documento' }).click();
+      await page.getByPlaceholder('Mi próxima gran idea').fill('Comprobación temporal de audio');
+      await page.getByRole('button', { name: 'Crear documento', exact: true }).click();
+      await page.getByRole('button', { name: 'Compartir', exact: true }).click();
+      await page.getByLabel('Tu nombre para colaborar').fill('Prueba A');
+      if (!await page.getByLabel('Servidor de colaboración').isVisible()) {
+        await page.getByRole('button', { name: 'Configuración de la conexión', exact: true }).click();
+      }
+      await page.getByLabel('Servidor de colaboración').fill(server);
+      await page.getByRole('button', { name: 'Crear enlace de edición', exact: true }).click();
+      await expect(page.getByLabel('Enlace de edición')).toBeVisible();
+      const link = await page.getByLabel('Enlace de edición').inputValue();
+      await page.getByRole('button', { name: 'Cerrar', exact: true }).click();
+      await guest.goto(link);
+      await expect(page.locator('.collaboration-status')).toContainText('Guardado en el servidor');
+      await expect(guest.locator('.collaboration-status')).toContainText('Guardado en el servidor');
+    });
+    await test.step('Join audio voluntarily and verify idle silence', async () => {
+      for (const participant of [page, guest]) {
+        expect(await participant.evaluate(() => (window as any).__texlaAudit.streams.length)).toBe(0);
+        await participant.getByRole('button', { name: 'Activar walkie-talkie', exact: true }).click();
+      }
+      await expect(page.locator('.walkie-heading')).toContainText('2 en el canal');
+      expect(await page.evaluate(() => (window as any).__texlaAudit.sent)).toBe(0);
+      expect(await energy(guest)).toBeLessThan(.001);
+    });
+    await test.step('Transmit A to B while edits still synchronize', async () => {
+      const button = page.getByRole('button', { name: 'Mantener pulsado para hablar', exact: true });
+      await button.hover(); await page.mouse.down();
+      await expect(page.locator('.walkie-status')).toContainText('transmitiendo');
+      await expect(guest.getByRole('button', { name: 'Mantener pulsado para hablar', exact: true })).toBeDisabled();
+      await expect.poll(() => energy(guest)).toBeGreaterThan(.01);
+      expect(await energy(page)).toBeLessThan(.001);
+      await guest.locator('.tiptap').evaluate(el => {
+        const editor = (el as any).editor;
+        editor.commands.insertContentAt(editor.state.doc.content.size, { type: 'paragraph', content: [{ type: 'text', text: 'Edición simultánea verificada.' }] });
+      });
+      await expect(page.locator('.tiptap')).toContainText('Edición simultánea verificada.');
+      await guest.getByRole('button', { name: 'Silenciar sonido del walkie-talkie', exact: true }).click();
+      await expect.poll(() => energy(guest)).toBeLessThan(.001);
+      await guest.getByRole('button', { name: 'Activar sonido del walkie-talkie', exact: true }).click();
+      await expect.poll(() => energy(guest)).toBeGreaterThan(.01);
+      await page.mouse.up();
+      await expect(guest.locator('.walkie-status')).toContainText('Canal libre');
+      await expect.poll(() => energy(guest)).toBeLessThan(.001);
+      const sent = await page.evaluate(() => (window as any).__texlaAudit.sent);
+      await page.waitForTimeout(500);
+      expect(await page.evaluate(() => (window as any).__texlaAudit.sent)).toBe(sent);
+    });
+    await test.step('Transmit B to A and close both microphones', async () => {
+      const button = guest.getByRole('button', { name: 'Mantener pulsado para hablar', exact: true });
+      await button.hover(); await guest.mouse.down();
+      await expect.poll(() => energy(page)).toBeGreaterThan(.01);
+      await guest.mouse.up();
+      await expect.poll(() => energy(page)).toBeLessThan(.001);
+      for (const participant of [page, guest]) {
+        await participant.getByRole('button', { name: 'Desactivar walkie-talkie', exact: true }).click();
+        expect(await participant.evaluate(() => (window as any).__texlaAudit.streams.every((stream: MediaStream) => stream.getTracks().every(track => track.readyState === 'ended')))).toBe(true);
+      }
+      expect(pageErrors).toEqual([]);
+    });
+    console.log(`::notice::Audio passed against ${origin} and ${new URL(server).origin}: A to B and B to A, mute, release, microphone closure and concurrent editing. Synthetic microphone, no real user accounts.`);
+  } finally {
+    // Never retain audit documents or print their edit/owner capabilities.
+    testInfo.setTimeout(testInfo.timeout + 20000);
+    await guestContext.close();
+    await page.close();
+    if (created) {
+      const response = await request.delete(`${server}/rooms/${created.room}`, { headers: { Origin: origin, Authorization: `Bearer ${created.ownerToken}` }, timeout: 15000 });
+      expect(response.status(), 'Temporary audit room must be deleted').toBe(200);
+      console.log('::notice::Temporary audit room deleted.');
+    }
+  }
+});
