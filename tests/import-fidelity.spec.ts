@@ -36,6 +36,17 @@ test('Word retains inherited typography, highlights, superscripts, merged tables
  await page.waitForTimeout(600);await page.reload();await page.getByRole('button',{name:'Estilos Guardado en este dispositivo'}).click();await expect(page.locator('.texla-figure img')).toHaveCount(2);await expect(page.locator('.tiptap span[style*="vertical-align"]')).toHaveText('2');
  await page.getByRole('button',{name:'LaTeX AUTO',exact:true}).click();const tex=await page.locator('.latex-panel pre').innerText();expect(tex).toContain('\\textsuperscript');expect(tex).toContain('\\colorbox[HTML]{FFFF00}');expect(tex).toContain('\\cellcolor[HTML]{DDEEFF}');expect(tex).toContain('\\multirow{2}');expect(tex).toContain('\\fancyhead[L]');expect(tex).toContain('\\fontsize{9.5}');
  const download=page.waitForEvent('download');await page.getByRole('button',{name:'Descargar .zip',exact:true}).click();const file=await download;const files=unzipSync(new Uint8Array(readFileSync((await file.path())!)));expect(Object.keys(files).filter(name=>name.startsWith('imagenes/'))).toHaveLength(1);expect(Object.values(files).map(strFromU8).some(text=>text.includes('\\begin{document}'))).toBe(true);
+ await page.getByRole('button',{name:'Editor visual',exact:true}).click();
+ await page.getByLabel('Tipografía',{exact:true}).selectOption('Times New Roman');
+ await expect(highlight).toHaveCSS('font-family', /Times New Roman/);
+ await page.getByRole('button',{name:'Formato del documento',exact:true}).click();
+ await page.getByRole('dialog').getByLabel(/^Tamaño del texto/).selectOption('12');
+ await page.getByRole('dialog').getByLabel('Interlineado').selectOption('2');
+ await page.getByRole('button',{name:'Listo',exact:true}).click();
+ await expect(highlight).toHaveCSS('font-size','15.2px');
+ await expect(highlight).toHaveCSS('background-color','rgb(255, 255, 0)');
+ await expect(highlight.locator('xpath=ancestor::p')).toHaveCSS('line-height','32px');
+
 });
 
 test('HTML typography and superscripts survive without accepting arbitrary font or CSS URLs',async({page})=>{

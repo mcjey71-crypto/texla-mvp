@@ -9,7 +9,7 @@ import { useCloudSave } from './useCloudSave';
 import { accountClient, accountError } from './supabase';
 import AccountPanel from './AccountPanel';
 import StarterKit from '@tiptap/starter-kit';
-import {RichTextAppearance, ImportedLayout, ImportedHeader} from './richFormatting';
+import {RichTextAppearance, ImportedLayout, ImportedHeader, updateImportedFormat} from './richFormatting';
 import Collaboration from '@tiptap/extension-collaboration';
 import CollaborationCaret from '@tiptap/extension-collaboration-caret';
 import { SharedSession } from './SharedSession';
@@ -210,7 +210,7 @@ function Workspace({authSession, authError}: {authSession: Session | null; authE
    const base = template ? createTemplate(template) : { title: title.trim() || 'Documento sin título', format: resolveFormat(), content: { type: 'doc', content: [{ type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: title.trim() || 'Una nueva idea' }] }, { type: 'paragraph' }] } };
    const d: Document = forAccount({ ...base, id: crypto.randomUUID(), updated: Date.now() }); setDocs(prev => [...prev, d]); openDocument(d); setModal(null); setTitle(''); setToast('Tu nuevo documento está listo');
  }
- function updateFormat(patch: Partial<DocumentFormat>) { if (session) session.doc.transact(() => { for (const [key, value] of Object.entries(patch)) session.metadata.set(`format.${key}`, value); }); setSaved(false); setDocs(prev => prev.map(d => d.id === activeRef.current ? { ...d, format: resolveFormat({ ...resolveFormat(d.format), ...patch }), updated: Date.now() } : d)); }
+ function updateFormat(patch: Partial<DocumentFormat>) { if(editor)updateImportedFormat(editor,formatRef.current,patch); if (session) session.doc.transact(() => { for (const [key, value] of Object.entries(patch)) session.metadata.set(`format.${key}`, value); }); setSaved(false); setDocs(prev => prev.map(d => d.id === activeRef.current ? { ...d, format: resolveFormat({ ...resolveFormat(d.format), ...patch }), updated: Date.now() } : d)); }
  function insertContents() {
    if (!editor) return; let existing: number | undefined;
    editor.state.doc.descendants((node,pos)=>{if(node.type.name==='tableOfContents') existing=pos;});

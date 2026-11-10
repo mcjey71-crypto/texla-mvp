@@ -1,4 +1,5 @@
-import { Extension, Mark, Node } from '@tiptap/core';
+import { Extension, Mark, Node, type Editor } from '@tiptap/core';
+import type { DocumentFormat } from './formalDocument';
 import { FONTS, fontDefinition } from './fonts';
 
 export type TextAppearance = { font?: string; size?: number; color?: string; highlight?: string; vertical?: 'super' | 'sub' };
@@ -24,6 +25,31 @@ export function blockAppearance(value: unknown): BlockAppearance {
   if (typeof a.border === 'boolean') out.border = a.border;
   if (a.keep === true) out.keep = true;
   return out;
+}
+/** Explicit document design choices must also affect the imported direct formatting. */
+export function updateImportedFormat(editor: Editor, previous: DocumentFormat, patch: Partial<DocumentFormat>) {
+  const tr = editor.state.tr;
+  const ratio = patch.fontSize === undefined ? 1 : patch.fontSize / previous.fontSize;
+  editor.state.doc.descendants((node, pos) => {
+    if (node.isText && (patch.fontFamily !== undefined || ratio !== 1)) {
+      const mark = node.marks.find(m => m.type.name === 'textAppearance');
+      if (mark) {
+        const appearance = textAppearance(mark.attrs.appearance);
+        if (patch.fontFamily !== undefined) delete appearance.font;
+        if (appearance.size && ratio !== 1) appearance.size = Math.min(96, Math.max(5, Math.round(appearance.size * ratio * 10) / 10));
+        tr.removeMark(pos, pos + node.nodeSize, mark.type).addMark(pos, pos + node.nodeSize, mark.type.create({ appearance }));
+      }
+    }
+    if (node.attrs.layout && ['paragraph', 'heading'].includes(node.type.name)) {
+      const layout = blockAppearance(node.attrs.layout);
+      if (patch.lineSpacing !== undefined) { layout.line = patch.lineSpacing; delete layout.exactLine; }
+      else if (layout.exactLine && ratio !== 1) layout.exactLine = Math.min(144, Math.max(5, layout.exactLine * ratio));
+      if (patch.paragraphSpacing !== undefined) layout.after = patch.paragraphSpacing;
+      if (patch.firstLineIndent !== undefined) layout.indent = patch.firstLineIndent * 72 / 2.54;
+      if (JSON.stringify(layout) !== JSON.stringify(node.attrs.layout)) tr.setNodeMarkup(pos, undefined, { ...node.attrs, layout });
+    }
+  });
+  if (tr.docChanged) editor.view.dispatch(tr);
 }
 export function appearanceCSS(value: unknown) {
   const a = textAppearance(value);
