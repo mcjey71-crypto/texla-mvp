@@ -4,6 +4,8 @@ async function openComments(page: Page) {
   await page.getByRole('button', { name: 'Comentarios', exact: true }).click();
 }
 test('shared comments and simultaneous replies merge across browsers, persist offline and resolve for everyone', async ({ browser, page }) => {
+  const keyWarnings: string[] = [];
+  page.on('console', message => { if (/same key/.test(message.text())) keyWarnings.push(message.text()); });
   await page.goto('/'); await page.getByRole('button', { name: 'Nuevo documento' }).click();
   await page.getByPlaceholder('Mi próxima gran idea').fill('Comentarios en equipo');
   await page.getByRole('button', { name: 'Crear documento', exact: true }).click();
@@ -44,8 +46,12 @@ test('shared comments and simultaneous replies merge across browsers, persist of
     await guest.reload(); await guest.getByRole('button', { name: 'Comentarios en equipo Documento compartido' }).click(); await expect(guest.locator('.collaboration-status')).toContainText('Guardado en el servidor');
     await openComments(guest); await expect(guest.locator('.comment-message')).toHaveCount(4);
     await guest.getByRole('button', { name: 'Cerrar comentarios', exact: true }).click();
+    await expect(guest.getByRole('button', { name: 'Activar walkie-talkie', exact: true })).toHaveCount(1);
+    await page.getByRole('button', { name: 'Cerrar comentarios', exact: true }).click();
+    await expect(page.getByRole('button', { name: 'Activar walkie-talkie', exact: true })).toHaveCount(1);
     await guest.locator('.tiptap p').first().evaluate(el => { const editor=(el.closest('.tiptap') as any).editor;const from=editor.view.posAtDOM(el,0);editor.commands.setTextSelection({from,to:from+15}); });
     await guest.getByLabel('Tamaño de letra en puntos').fill('20'); await guest.getByLabel('Tamaño de letra en puntos').press('Enter');
     await expect(page.locator('.tiptap span[style*="font-size: 20pt"]')).toBeVisible();
+    expect(keyWarnings).toEqual([]);
   } finally { await context.close(); }
 });
