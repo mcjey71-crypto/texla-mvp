@@ -1,4 +1,4 @@
-name: Verify published Texla and live audio
+name: Verify published Texla, shared comments and live audio
 
 on:
   workflow_dispatch:
@@ -29,7 +29,7 @@ jobs:
           node-version: 24
           cache: npm
       - run: npm ci
-      - name: Test the published website and real audio relay
+      - name: Test published comments, typography and real audio relay
         run: |
           texla_browser="$(command -v google-chrome || command -v chromium || true)"
           if [ -z "$texla_browser" ]; then

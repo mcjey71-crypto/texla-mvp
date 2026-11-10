@@ -73,7 +73,7 @@ test('published editor loads and reports the enabled login providers', async ({ 
   expect(errors).toEqual([]);
 });
 
-test('live voice crosses the published server in both directions and stops when released', async ({ page, browser, request }, testInfo) => {
+test('live shared comments, typography and voice synchronize through the published server', async ({ page, browser, request }, testInfo) => {
   const origin = new URL(testInfo.project.use.baseURL!).origin;
   const health = await request.get(server + '/health', { headers: { Origin: origin } });
   expect(health.status()).toBe(200);
@@ -96,7 +96,7 @@ test('live voice crosses the published server in both directions and stops when 
     await test.step('Create an isolated test document on the published website', async () => {
       await page.goto('./');
       await page.getByRole('button', { name: 'Nuevo documento' }).click();
-      await page.getByPlaceholder('Mi próxima gran idea').fill('Comprobación temporal de audio');
+      await page.getByPlaceholder('Mi próxima gran idea').fill('Comprobación temporal de colaboración');
       await page.getByRole('button', { name: 'Crear documento', exact: true }).click();
       await page.getByRole('button', { name: 'Compartir', exact: true }).click();
       await page.getByLabel('Tu nombre para colaborar').fill('Prueba A');
@@ -111,6 +111,30 @@ test('live voice crosses the published server in both directions and stops when 
       await guest.goto(link);
       await expect(page.locator('.collaboration-status')).toContainText('Guardado en el servidor');
       await expect(guest.locator('.collaboration-status')).toContainText('Guardado en el servidor');
+    });
+    await test.step('Synchronize text size, a comment, a reply and resolution on the published website', async () => {
+      await page.locator('.tiptap p').first().click(); await page.keyboard.type('Fragmento para revisar.');
+      await page.locator('.tiptap p').first().evaluate(el => {
+        const editor = (el.closest('.tiptap') as any).editor, from = editor.view.posAtDOM(el, 0);
+        editor.commands.setTextSelection({ from, to: from + 9 });
+      });
+      await page.getByLabel('Tamaño de letra en puntos').fill('18'); await page.getByLabel('Tamaño de letra en puntos').press('Enter');
+      await expect(guest.locator('.tiptap span[style*="font-size: 18pt"]')).toHaveText('Fragmento');
+      await page.getByRole('button', { name: 'Comentarios', exact: true }).click();
+      await page.getByRole('button', { name: 'Añadir comentario', exact: true }).click();
+      await page.getByLabel('Nuevo comentario').fill('Comentario temporal de comprobación.');
+      await page.getByRole('button', { name: 'Publicar comentario', exact: true }).click();
+      await guest.getByRole('button', { name: 'Comentarios', exact: true }).click();
+      await expect(guest.locator('.comment-message')).toContainText('Comentario temporal de comprobación.');
+      await guest.getByLabel('Responder al comentario').fill('Respuesta recibida en el documento compartido.');
+      await guest.getByRole('button', { name: 'Responder', exact: true }).click();
+      await expect(page.locator('.comment-message')).toHaveCount(2);
+      await page.getByRole('button', { name: 'Resolver comentario', exact: true }).click();
+      await expect(guest.locator('.comment-card')).toHaveCount(0);
+      await guest.getByLabel('Mostrar comentarios').selectOption('resolved');
+      await expect(guest.locator('.comment-message')).toHaveCount(2);
+      for (const participant of [page, guest]) await participant.getByRole('button', { name: 'Cerrar comentarios', exact: true }).click();
+      console.log('::notice::Published shared font size, anchored comment, reply and resolution passed between two browsers.');
     });
     await test.step('Join audio voluntarily and verify idle silence', async () => {
       for (const participant of [page, guest]) {
