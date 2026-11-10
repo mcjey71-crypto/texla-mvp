@@ -21,6 +21,12 @@ export function readBackup(raw: string): Omit<SavedDocument,'id'|'updated'> {
     if(!node||typeof node.type!=='string'||depth>30||++count>50000)throw new Error('La estructura del documento no es válida.');
     if(node.attrs?.textAlign != null && !['left','center','right','justify'].includes(node.attrs.textAlign))throw new Error('La copia contiene una alineación no válida.');
     if(node.attrs?.layout)node.attrs.layout=blockAppearance(node.attrs.layout);
+    if(node.type==='commentThread') {
+      if(typeof node.attrs?.id!=='string'||node.attrs.id.length>100||typeof node.attrs.quote!=='string'||node.attrs.quote.length>500||typeof node.attrs.resolved!=='boolean'||!node.content?.length||node.content.some(child=>child.type!=='commentMessage'))throw new Error('La copia contiene un comentario no válido.');
+    }
+    if(node.type==='commentMessage') {
+      if(typeof node.attrs?.id!=='string'||node.attrs.id.length>100||typeof node.attrs.author!=='string'||node.attrs.author.length>60||typeof node.attrs.body!=='string'||node.attrs.body.length>4000||typeof node.attrs.created!=='number'||!Number.isFinite(node.attrs.created)||node.attrs.created<0||node.attrs.created>8.64e15||node.content?.length)throw new Error('La copia contiene una respuesta no válida.');
+    }
     for(const mark of node.marks||[])if(mark.type==='textAppearance'&&mark.attrs)mark.attrs.appearance=textAppearance(mark.attrs.appearance);
     if(node.type==='tableCell'||node.type==='tableHeader') {
       for(const key of ['colspan','rowspan']) if(node.attrs?.[key] != null && (!Number.isInteger(node.attrs[key]) || node.attrs[key]<1 || node.attrs[key]>1000))throw new Error('La copia contiene una tabla no válida.');

@@ -40,7 +40,7 @@ El inicio de sesión se hace en el navegador del propietario. `wrangler.jsonc` p
 - La aplicación guarda una copia CRDT en IndexedDB y una representación local del documento. Si se corta la conexión mientras editas, puedes seguir escribiendo en el documento abierto; al reconectar se combinan los cambios. La carga de la página sin internet desde cero no está implementada. El almacenamiento del navegador puede borrarse o alcanzar su cuota: descarga copias para respaldar trabajo importante.
 - **Guardado en el servidor** se muestra tras recibir la confirmación de almacenamiento, no solo al enviar un cambio. Una desconexión, rechazo o límite muestra un estado distinto. Si el enlace deja de funcionar, todavía puedes exportar la copia que tengas abierta.
 - Deshacer en el editor compartido afecta a tus cambios de contenido y no deshace las aportaciones ajenas. Cambios simultáneos del mismo ajuste de formato o de una misma referencia se resuelven por campo/registro; no existe un diálogo de conflictos. El estilo bibliográfico y la numeración se recalculan a partir del contenido compartido.
-- No hay acceso de solo lectura, cuentas, comentarios, historial navegable, recuperación automática de versiones ni cifrado de extremo a extremo. HTTPS protege el transporte; el servidor procesa y almacena el documento.
+- Los enlaces dan permiso de edición y permiten comentarios compartidos. No hay acceso de solo lectura, historial navegable, recuperación automática de versiones ni cifrado de extremo a extremo. HTTPS protege el transporte; el servidor procesa y almacena el documento.
 
 ## Base de datos, cuotas y costes
 
@@ -98,3 +98,15 @@ Las copias independientes creadas por versiones anteriores no se eliminan autom�
 ## Conversación por voz
 
 Los documentos compartidos incluyen un walkie-talkie con activación voluntaria, micrófono con pulsación mantenida, turnos exclusivos y control de escucha. Requiere publicar el Worker actualizado. Consulta [uso, despliegue, privacidad y consumo de recursos](walkie-talkie.md).
+
+## Comentarios y revisión
+
+Abre **Comentarios** en la barra de herramientas. Selecciona texto antes de pulsar **Añadir comentario** para vincular la conversación a ese fragmento; sin selección se crea una observación general. El atajo **Ctrl/⌘ + Alt + M** abre directamente la redacción de un comentario. El panel permite responder, resolver, filtrar pendientes/resueltos y reabrir conversaciones.
+
+Todos los participantes con el enlace de edición pueden ver, responder y resolver los comentarios. El nombre es el nombre de colaboración elegido por la persona; no acredita una identidad verificada. Las respuestas conservan el nombre que tenían al publicarse.
+
+Los comentarios usan el mismo documento Yjs, guardado local, copia editable y sincronización de Cloudflare que el texto. Cada respuesta es un elemento independiente, para que las respuestas simultáneas se combinen sin reemplazarse. Los cambios realizados sin conexión quedan pendientes y se sincronizan al reconectar. La biblioteca de Supabase conserva los comentarios dentro del contenido del documento: esta mejora no requiere migraciones ni tablas nuevas. Se aplican las cuotas existentes del documento.
+
+Los marcadores siguen al texto cuando se edita. Si se elimina el fragmento, la conversación conserva su cita original e indica que el texto asociado ya no está. Las observaciones se incluyen en las copias editables de Texla; se excluyen del recuento de palabras, la impresión y el archivo LaTeX.
+
+Pruebas: `tests/comments-typography.spec.ts` cubre tamaño de selección, escritura posterior, deshacer, guardado, exportación, comentarios, resolución, copia editable y móvil. `collaboration-tests/comments.spec.ts` usa dos navegadores independientes para comprobar anclaje durante cambios remotos, respuestas simultáneas, desconexión/reconexión, resolución y reapertura. Las pruebas de cuenta comprueban la recuperación de comentarios desde otro dispositivo.

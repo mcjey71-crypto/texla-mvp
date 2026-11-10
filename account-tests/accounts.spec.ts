@@ -34,6 +34,21 @@ async function setup(context:BrowserContext,id?:string) {
 async function create(page:import('@playwright/test').Page,name:string){await page.getByRole('button',{name:'Nuevo documento'}).click();await page.getByPlaceholder('Mi próxima gran idea').fill(name);await page.getByRole('button',{name:'Crear documento',exact:true}).click();await page.locator('.tiptap p').last().click();await page.keyboard.type('Contenido privado de la cuenta.');await expect(page.locator('.save-status')).toContainText('Guardado en tu cuenta');}
 test.beforeEach(()=>{rows.clear();images.clear();});
 
+test('review comments are saved in the private account and reopened on another device',async({browser,page,context})=>{
+  await setup(context,alice);await page.goto('/');await create(page,'Documento con revisión');
+  await page.getByRole('button',{name:'Comentarios',exact:true}).click();await page.getByRole('button',{name:'Añadir comentario',exact:true}).click();
+  await page.getByLabel('Nuevo comentario').fill('Observación guardada en mi cuenta.');await page.getByRole('button',{name:'Publicar comentario',exact:true}).click();
+  await expect(page.locator('.save-status')).toContainText('Guardado en tu cuenta');
+  await expect.poll(()=>JSON.stringify([...rows.values()].find(row=>row.title==='Documento con revisión')?.payload)).toContain('Observación guardada en mi cuenta.');
+  const other=await browser.newContext();
+  try {
+    await setup(other,alice);const second=await other.newPage();await second.goto('/');await second.getByRole('button',{name:'Mi cuenta',exact:true}).click();
+    await second.getByRole('button',{name:/^Documento con revisión/}).click();await second.getByRole('button',{name:'Comentarios',exact:true}).click();
+    await expect(second.locator('.comment-message')).toContainText('Observación guardada en mi cuenta.');
+    await expect(second.locator('.tiptap')).not.toContainText('Observación guardada en mi cuenta.');
+  } finally { await other.close(); }
+});
+
 test('Google and email login options are available, use PKCE and preserve local work',async({page,context})=>{
   await setup(context);await page.goto('/');await page.getByRole('button',{name:'Iniciar sesión',exact:true}).click();await expect(page.getByRole('button',{name:'Continuar con Google'})).toBeVisible();
   await page.getByLabel('Tu correo electrónico').fill('ana@example.com');const request=page.waitForRequest(r=>r.url().includes('/auth/v1/otp'));await page.getByRole('button',{name:'Enviarme enlace para entrar'}).click();const req=await request;expect(req.postDataJSON().email).toBe('ana@example.com');expect(req.postDataJSON().code_challenge).toBeTruthy();await expect(page.getByRole('status')).toContainText('Revisa tu correo');

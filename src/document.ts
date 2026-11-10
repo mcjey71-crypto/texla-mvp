@@ -38,7 +38,7 @@ function importedParagraph(inner:string,node:DocNode,format:DocumentFormat){
  return `\\begingroup\n${align}\n\\setlength{\\parskip}{0pt}\n\\setlength{\\parindent}{${a.indent||0}pt}\n${a.left?`\\setlength{\\leftskip}{${a.left}pt}\n`:''}${a.right?`\\setlength{\\rightskip}{${a.right}pt}\n`:''}${a.line?`\\setstretch{${a.line}}\n`:''}${a.before?`\\vspace{${a.before}pt}\n`:''}${inner}\\par\n${a.after?`\\vspace{${a.after}pt}\n`:''}\\endgroup\n`;
 }
 export function nodeToLatex(node: DocNode, citationNumbers: Map<string, number> = new Map(), citationLabels?: Map<string, string>, format = resolveFormat(), bibliographyContent = ''): string {
-  if(node.type==='importedHeader')return '';
+  if(['importedHeader','commentThread','commentMessage'].includes(node.type))return '';
   if (node.type === 'text') {
     const isURL = node.marks?.some(mark => mark.type === 'link' && /^https?:\/\//i.test(mark.attrs?.href || '') && node.text === mark.attrs?.href);
     let text = isURL ? `\\url{${(node.text || '').replace(/[{}%\\]/g, c => '\\' + c)}}` : escapeTex(node.text || '');

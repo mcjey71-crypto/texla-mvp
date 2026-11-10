@@ -37,7 +37,7 @@ En **Estilo de párrafo**, Título representa el título del trabajo; Sección y
 
 ### Formato por documento
 
-Tamaño A4/Carta, texto 11/12 puntos, interlineado sencillo/1,5/doble, márgenes 2/2,5/3 cm y numeración de secciones. Se guardan por documento y se aplican al editor, impresión y exportación. En móvil se reduce el margen de la vista para aprovechar el ancho; la impresión conserva el margen elegido. El zoom y la tipografía elegida en el editor siguen siendo preferencias de visualización. El formato de la bibliografía lo determina el estilo bibliográfico seleccionado.
+Tamaño A4/Carta, texto 11/12 puntos, interlineado sencillo/1,5/doble, márgenes 2/2,5/3 cm y numeración de secciones. Se guardan por documento y se aplican al editor, impresión y exportación. En móvil se reduce el margen de la vista para aprovechar el ancho; la impresión conserva el margen elegido. El zoom es una preferencia de visualización. La tipografía se guarda y exporta con el documento; la barra permite ajustar el tamaño del texto seleccionado entre 5 y 96 puntos. El formato de la bibliografía lo determina el estilo bibliográfico seleccionado.
 
 ### Buscar y reemplazar
 
@@ -49,7 +49,7 @@ Tamaño A4/Carta, texto 11/12 puntos, interlineado sencillo/1,5/doble, márgenes
 
 ## Qué queda fuera de esta entrega
 
-- Colaboración simultánea, permisos, comentarios compartidos y cuentas: necesitan autenticación y almacenamiento remoto.
+- La colaboración simultánea, los comentarios y las cuentas se implementaron posteriormente con Cloudflare y Supabase; consulta [la guía de colaboración](collaboration.md). Los enlaces actuales otorgan edición; no hay roles de solo lectura.
 - Historial duradero y sincronización entre dispositivos: las copias editables ayudan a conservar el trabajo, pero el guardado habitual sigue siendo local.
 - Compilar PDF en un servidor: requiere infraestructura para ejecutar TeX de forma aislada. El botón PDF actual utiliza la impresión del navegador.
 - Imágenes y gestión de archivos asociados, pies de figura/tabla y referencias cruzadas: requieren manejo de recursos y exportación de paquetes de archivos.

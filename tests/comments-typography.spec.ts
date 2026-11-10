@@ -1,0 +1,92 @@
+import { test, expect, type Page } from '@playwright/test';
+import { readFileSync } from 'node:fs';
+
+async function prepareDocument(page: Page) {
+  await page.goto('/'); await page.getByRole('button', { name: 'Nuevo documento' }).click();
+  await page.getByPlaceholder('Mi próxima gran idea').fill('Revisión editorial');
+  await page.getByRole('button', { name: 'Crear documento', exact: true }).click();
+  await page.locator('.tiptap').evaluate(el => {
+    const editor = (el as HTMLElement & { editor: import('@tiptap/core').Editor }).editor;
+    editor.commands.setContent({ type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: 'Texto importante', marks: [{ type: 'bold' }, { type: 'textAppearance', attrs: { appearance: { color: '123456', highlight: 'FFFF00', size: 12 } } }] }, { type: 'text', text: ' y otro texto.' }] }] });
+    editor.commands.setTextSelection({ from: 1, to: 17 });
+  });
+}
+test('selection size preserves other marks, supports typing, undo, reload, LaTeX and mobile controls', async ({ page }) => {
+  await prepareDocument(page);
+  await page.getByRole('button', { name: 'Aumentar tamaño de letra', exact: true }).click();
+  await expect(page.locator('.tiptap span[style*="background-color"]')).toHaveCSS('font-size', '17.3333px');
+  await expect(page.locator('.tiptap span[style*="background-color"]')).toHaveCSS('color', 'rgb(18, 52, 86)');
+  await page.getByRole('button', { name: 'Deshacer', exact: true }).click();
+  await expect(page.locator('.tiptap span[style*="background-color"]')).toHaveCSS('font-size', '16px');
+  const size = page.getByLabel('Tamaño de letra en puntos');
+  await size.fill('24'); await size.press('Enter');
+  await expect(page.locator('.tiptap span[style*="background-color"]')).toHaveCSS('font-size', '32px');
+  await size.fill('1000'); await size.press('Enter'); await expect(size).toHaveValue('24');
+  await page.getByRole('button', { name: 'Disminuir tamaño de letra', exact: true }).click();
+  await expect(size).toHaveValue('23');
+  await page.waitForTimeout(600); await page.reload();
+  await page.getByRole('button', { name: 'Revisión editorial Guardado en este dispositivo' }).click();
+  await expect(page.locator('.tiptap span[style*="background-color"]')).toHaveCSS('font-size', '30.6667px');
+  await page.getByRole('button', { name: 'LaTeX AUTO', exact: true }).click();
+  await expect(page.locator('.latex-panel pre')).toContainText('\\fontsize{23}');
+  await page.getByRole('button', { name: 'Editor visual', exact: true }).click();
+  await page.locator('.tiptap p').click(); await page.keyboard.press('End');
+  await size.fill('18'); await size.press('Enter'); await page.keyboard.type(' Nuevo');
+  await expect(page.locator('.tiptap span[style*="font-size: 18pt"]')).toContainText('Nuevo');
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(size).toBeVisible(); await expect(page.getByRole('button', { name: 'Comentarios', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
+
+test('anchored comments survive text edits and backups, resolve, reopen, and stay out of manuscript exports', async ({ page }) => {
+  await prepareDocument(page);
+  const words = await page.locator('.statusbar').innerText();
+  await page.getByRole('button', { name: 'Comentarios', exact: true }).click();
+  await page.getByLabel('Tu nombre en los comentarios').fill('Ana');
+  await page.getByRole('button', { name: 'Añadir comentario', exact: true }).click();
+  await page.getByLabel('Nuevo comentario').fill('Revisar esta afirmación <script>alert(1)</script>');
+  await page.getByRole('button', { name: 'Publicar comentario', exact: true }).click();
+  await expect(page.locator('.comment-anchor')).toContainText('Texto importante');
+  await expect(page.locator('.comment-message')).toContainText('Revisar esta afirmación');
+  expect(await page.locator('.statusbar').innerText()).toContain(words.match(/\d+ palabras/)![0]);
+  await page.getByLabel('Responder al comentario').fill('Revisado con la fuente original.');
+  await page.getByRole('button', { name: 'Responder', exact: true }).click();
+  await expect(page.locator('.comment-message')).toHaveCount(2);
+  await page.getByRole('button', { name: 'Resolver comentario', exact: true }).click();
+  await expect(page.locator('.comment-card')).toHaveCount(0);
+  await page.getByLabel('Mostrar comentarios').selectOption('resolved');
+  await page.getByRole('button', { name: 'Reabrir comentario', exact: true }).click();
+  await page.getByLabel('Mostrar comentarios').selectOption('open');
+  await expect(page.locator('.comment-card')).toHaveCount(1);
+  await page.locator('.tiptap').evaluate(el => {
+    const editor = (el as HTMLElement & { editor: import('@tiptap/core').Editor }).editor;
+    editor.commands.insertContentAt(1, 'Antes: ');
+  });
+  await page.locator('.comment-quote').click();
+  await expect.poll(() => page.locator('.tiptap').evaluate(el => { const e = (el as any).editor; return e.state.doc.textBetween(e.state.selection.from, e.state.selection.to); })).toContain('Texto importante');
+  await page.getByRole('button', { name: 'Cerrar comentarios', exact: true }).click();
+  await page.getByRole('button', { name: 'LaTeX AUTO', exact: true }).click();
+  await expect(page.locator('.latex-panel pre')).not.toContainText('Revisar esta afirmación');
+  await expect(page.locator('.latex-panel pre')).not.toContainText('Revisado con la fuente');
+  await page.getByRole('button', { name: 'Exportar', exact: true }).click();
+  const downloadPromise = page.waitForEvent('download');
+  await page.getByRole('button', { name: /Copia editable de Texla/ }).click();
+  const download = await downloadPromise; const content = readFileSync((await download.path())!, 'utf8');
+  expect(content).toContain('Revisar esta afirmación');
+  await page.reload(); await page.getByRole('button', { name: 'Revisión editorial Guardado en este dispositivo' }).click();
+  await page.getByRole('button', { name: 'Comentarios', exact: true }).click();
+  await expect(page.locator('.comment-message')).toHaveCount(2);
+  await page.getByRole('button', { name: 'Cerrar comentarios', exact: true }).click();
+  await page.locator('.document-tools').getByRole('button', { name: 'Importar documento', exact: true }).click();
+  await page.getByLabel('Archivo para importar').setInputFiles({ name: 'Revision.texla.json', mimeType: 'application/json', buffer: Buffer.from(content) });
+  await page.getByRole('button', { name: 'Convertir documento', exact: true }).click();
+  await page.getByRole('button', { name: 'Crear documento editable', exact: true }).click();
+  await page.getByRole('button', { name: 'Comentarios', exact: true }).click();
+  await expect(page.locator('.comment-message')).toHaveCount(2);
+  await expect(page.locator('.comment-anchor')).toContainText('Texto importante');
+  await page.emulateMedia({ media: 'print' }); await expect(page.locator('.comments-panel')).toBeHidden();
+  await page.emulateMedia({ media: 'screen' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(page.getByRole('button', { name: 'Cerrar comentarios', exact: true })).toBeVisible();
+  expect(await page.evaluate(() => document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+});
