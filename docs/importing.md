@@ -4,17 +4,27 @@ Pulsa **Importar documento** en la barra de herramientas o en el menú lateral, 
 
 | Archivo | Contenido recuperado | Qué revisar |
 | --- | --- | --- |
-| Word `.docx` | Títulos, párrafos, listas, negrita/cursiva, tablas y ecuaciones nativas habituales | Estilos de página, imágenes, notas, citas y matemáticas avanzadas. Los `.doc` antiguos deben guardarse como `.docx`. |
-| PDF con texto | Texto seleccionable, agrupación aproximada de líneas/párrafos y separaciones de página | Orden de columnas, tablas y ecuaciones. No reconstruye el diseño original. |
+| Word `.docx` | Estilos heredados de títulos y párrafos, fuentes compatibles, tamaños, colores, resaltado, super/subíndices, alineación, espaciado, sangrías, tablas con anchos y celdas combinadas, imágenes PNG/JPG/WebP y ecuaciones nativas habituales | Fuentes sustituidas, secciones con distintos formatos, pies de página, tablas anidadas, dibujos de Word y matemáticas avanzadas. Los `.doc` antiguos deben guardarse como `.docx`. |
+| PDF con texto | Tipografía aproximada, títulos, párrafos, imágenes y tablas editables cuando el PDF contiene etiquetas estructurales; reúne tablas que continúan entre páginas | Orden de columnas, tablas sin etiquetas o con celdas combinadas, colores, resaltados, gráficos vectoriales y ecuaciones. La reconstrucción del diseño es aproximada. |
 | PDF escaneado | Texto mediante OCR opcional en español e inglés | Ortografía, números y orden. El OCR de texto no convierte fórmulas de una imagen en ecuaciones LaTeX. |
 | OpenDocument `.odt` | Títulos, párrafos, listas y tablas básicas | Estilos, celdas combinadas, objetos incrustados, fórmulas e imágenes. |
 | Markdown `.md`, `.markdown` | Títulos, listas, tablas, énfasis y fórmulas delimitadas | Imágenes y extensiones propias de otras aplicaciones. |
 | Texto `.txt` | Párrafos y fórmulas entre `$…$`, `$$…$$`, `\(…\)` y `\[…\]` | Formato y estructura de párrafos. Usa UTF-8. |
-| HTML `.html`, `.htm` | Estructura y formato básico, tablas y enlaces seguros | Estilos complejos; las imágenes se sustituyen por indicaciones de ubicación. Se eliminan scripts y contenido ejecutable. |
+| HTML `.html`, `.htm` | Estructura, fuentes compatibles, tamaños, colores, resaltados, super/subíndices, tablas y enlaces seguros | Estilos complejos; las imágenes se sustituyen por indicaciones de ubicación. Se eliminan scripts y contenido ejecutable. |
 | LaTeX `.tex` | Títulos, listas, énfasis, ecuaciones y comandos habituales | Es una importación parcial, no un compilador: los entornos/macros no compatibles quedan como texto con un aviso. No carga `.bib`, archivos incluidos ni imágenes. |
 | Texla `.texla.json` | Contenido, imágenes incluidas en la copia, ecuaciones, referencias vinculadas y formato compatibles | La copia importada no contiene sesiones ni permisos de colaboración. |
 
 Las referencias de otros formatos se conservan como texto, cuando están presentes en el contenido recuperable; no pasan automáticamente a ser citas vinculadas. Usa **Referencias** y la búsqueda DOI para registrarlas. Conserva siempre el archivo original, especialmente si contiene gráficos o ecuaciones complejas. Las imágenes de otros formatos se pueden añadir manualmente después con **Imagen**; consulta [la guía](images.md).
+
+## Fidelidad del diseño
+
+Si tienes Word y PDF del mismo trabajo, **prefiere DOCX**: conserva información de estilos y tablas que un PDF puede haber perdido. Se usa un formato de página común y las fuentes disponibles en Texla; fuentes alternativas o motores de impresión distintos pueden cambiar los saltos y el número de páginas. El texto sigue siendo editable, no una fotografía de cada página.
+
+Los encabezados simples se recuperan al inicio en el editor y en la impresión del navegador. Al compilar la exportación LaTeX se repiten como encabezados. Los pies de página y encabezados complejos requieren revisión. Las notas al pie de Word se reúnen al final, y las listas importadas de Word conservan sus etiquetas como texto. Las tablas anidadas se simplifican. Las figuras importadas conservan su pie original como texto separado, sin añadir otro número automáticamente.
+
+Las imágenes compatibles se guardan con el documento y se incluyen en la exportación **LaTeX con imágenes (.zip)**; descomprime el ZIP completo antes de compilar. Se admiten hasta 20 imágenes por documento. Las imágenes externas enlazadas no se descargan. Los gráficos vectoriales de PDF y los dibujos de Word todavía pueden necesitar una imagen añadida manualmente.
+
+Estas mejoras se aplican al **volver a importar el archivo original**. No pueden recuperar estilos o imágenes que una conversión anterior ya había descartado. Revisa la nueva copia antes de sustituir tu documento de trabajo.
 
 ## PDF escaneado
 
@@ -38,3 +48,5 @@ Los PDF protegidos con contraseña deben desbloquearse antes de importarlos. En 
 `npm run dev` y `npm run build` preparan automáticamente los recursos PDF/OCR con `scripts/prepare-import-assets.mjs`. Están en `public/import-assets/`, excluido de Git y copiado al sitio por Vite. Los importadores y el motor PDF se cargan por separado; las personas que solo redactan no descargan los modelos OCR.
 
 Las pruebas de navegador cubren documentos Word con ecuaciones, PDF seleccionable/escaneado/protegido, ODT, Markdown, HTML no confiable, texto y LaTeX; verifican edición y descarga `.tex`. Los ejemplos pequeños están en `tests/fixtures/import/`. Para regenerarlos se puede ejecutar `scripts/create-import-fixtures.py` con Python, python-docx, reportlab y Pillow; no es necesario para ejecutar las pruebas.
+
+`tests/import-fidelity.spec.ts` añade regresiones para estilos heredados, resaltados, superíndices, tablas combinadas, imágenes, encabezados, persistencia y exportación ZIP. El PDF estructurado de dos páginas se regenera con `scripts/create-tagged-pdf-fixture.py` (pypdf); verifica que una tabla se reúna sin perder celdas. Todos los archivos de prueba son sintéticos.

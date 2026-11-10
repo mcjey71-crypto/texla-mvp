@@ -17,11 +17,17 @@ export async function importDocument(file: File, schema: Schema, options: Import
   if (extension === 'pdf') {
     const { readPdf } = await import('./pdf'); options.signal.throwIfAborted();
     const pdf = await readPdf(new Uint8Array(await file.arrayBuffer()), options);
-    result.document.content = pdf.content; result.pages = pdf.pages; result.warnings.push(...pdf.warnings);
-  } else if (extension === 'docx' || extension === 'odt') {
-    const { readDocx, readOdt } = await import('./office'); options.signal.throwIfAborted();
+    result.document.content = pdf.content; result.document.format=pdf.format; result.pages = pdf.pages; result.warnings.push(...pdf.warnings);
+  } else if (extension === 'docx') {
+    const { readDocx } = await import('./docx'); options.signal.throwIfAborted();
+    options.onProgress('Recuperando estilos, tablas e imágenes de Word…');
+    const office = await readDocx(new Uint8Array(await file.arrayBuffer()), options);
+    result.document.content = office.content; result.document.format = office.format;
+    result.warnings.push(...office.warnings);
+  } else if (extension === 'odt') {
+    const { readOdt } = await import('./office'); options.signal.throwIfAborted();
     const bytes = new Uint8Array(await file.arrayBuffer()); options.onProgress('Convirtiendo la estructura del documento…');
-    const office = extension === 'docx' ? await readDocx(bytes) : readOdt(bytes);
+    const office = readOdt(bytes);
     checkTextSize(office.html); result.warnings.push(...office.warnings);
     result.document.content = richText(office.html, schema, result.warnings);
   } else {

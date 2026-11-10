@@ -13,6 +13,12 @@ describe('AI math paste', () => {
  });
 });
 describe('LaTeX export', () => {
+ it('keeps long imported DOI links breakable regardless of formatting mark order', () => {
+  const url='https://doi.org/10.1371/journal.pcbi.1011630';
+  for(const marks of [[{type:'link',attrs:{href:url}},{type:'underline'}],[{type:'underline'},{type:'link',attrs:{href:url}}]]){
+   const out=nodeToLatex({type:'text',text:url,marks});expect(out).toBe(`\\url{${url}}`);expect(out).not.toContain('\\underline');
+  }
+ });
  it('escapes prose without corrupting mathematical commands', () => {
   const out = exportLatex('Tesis & ciencia', { type: 'doc', content: [{ type: 'paragraph', content: [{ type: 'text', text: '50% & a_b', marks: [{ type: 'bold' }] }] }, { type: 'blockMath', attrs: { latex: '\\frac{a}{b}' } }] });
   expect(out).toContain('\\textbf{50\\% \\& a\\_b}'); expect(out).toContain('\\begin{equation}\n\\frac{a}{b}\n\\end{equation}'); expect(out).toContain('\\end{document}');

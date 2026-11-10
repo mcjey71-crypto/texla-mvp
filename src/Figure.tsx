@@ -54,7 +54,7 @@ function FigureView({
       const position = getPos();
       let n = 0;
       editor.state.doc.descendants((child, pos) => {
-        if (child.type.name === "figure" && pos <= (position ?? -1)) n++;
+        if (child.type.name === "figure" && child.attrs.captionMode !== 'none' && pos <= (position ?? -1)) n++;
       });
       setNumber(n || 1);
     };
@@ -103,13 +103,13 @@ function FigureView({
           </button>
         </div>
       )}
-      <figcaption>
+      {figure.captionMode !== 'none' && <figcaption>
         <strong>Figura {number}.</strong>
         {figure.caption && ` ${figure.caption}`}
         {figure.source && (
           <span className="figure-source">Fuente: {figure.source}</span>
         )}
-      </figcaption>
+      </figcaption>}
       {editor.isEditable && (
         <div className="figure-actions">
           <button
@@ -160,6 +160,7 @@ export const Figure = Node.create<{
       alt: { default: "" },
       width: { default: 100 },
       align: { default: "center" },
+      captionMode: { default: undefined },
     };
   },
   parseHTML() {

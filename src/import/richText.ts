@@ -3,6 +3,7 @@ import { DOMParser as ProseMirrorParser, type Schema } from '@tiptap/pm/model';
 import type { DocNode } from '../document';
 import { parseMathText } from '../document';
 import { escapeHTML } from './common';
+import {readAppearance,appearanceCSS} from '../richFormatting';
 
 export function mathInDocument(node: DocNode): DocNode[] {
   if (node.type === 'paragraph' || node.type === 'heading') {
@@ -33,14 +34,16 @@ export function richText(html: string, schema: Schema, warnings: string[]): DocN
   if (dom.querySelector('img')) warnings.push('Las imágenes se sustituyeron por una indicación de su ubicación; no se incluyen en esta conversión.');
   dom.querySelectorAll('img').forEach(img => img.replaceWith(dom.createTextNode(`[Imagen${img.getAttribute('alt') ? `: ${img.getAttribute('alt')}` : ''}]`)));
   dom.querySelectorAll('*').forEach(element => {
-    if (element.hasAttribute('style')) { const align = (element as HTMLElement).style.textAlign; element.removeAttribute('style'); if (['left','right','center','justify'].includes(align)) element.setAttribute('style', `text-align: ${align}`); }
+    if (element.hasAttribute('style')) { const align = (element as HTMLElement).style.textAlign; const appearance=appearanceCSS(readAppearance(element as HTMLElement)); element.removeAttribute('style'); const styles=[appearance,['left','right','center','justify'].includes(align)?`text-align: ${align}`:''].filter(Boolean).join(';');if(styles)element.setAttribute('style',styles); }
     if (element.hasAttribute('data-type') && !['inline-math','block-math'].includes(element.getAttribute('data-type')!)) element.removeAttribute('data-type');
     if (element.tagName === 'A' && !/^(https?:\/\/|mailto:)/i.test(element.getAttribute('href') || '')) element.removeAttribute('href');
     for (const name of ['colspan','rowspan']) if (element.hasAttribute(name)) element.setAttribute(name, String(Math.min(100, Math.max(1, Number(element.getAttribute(name)) || 1))));
   });
   dom.querySelectorAll('h4,h5,h6').forEach(element => { const replacement = dom.createElement('h3'); replacement.append(...element.childNodes); element.replaceWith(replacement); });
-  if (dom.querySelector('sup,sub')) warnings.push('Revisa los superíndices y subíndices de texto: se conservaron con marcas ^ y _.');
-  dom.querySelectorAll('sup,sub').forEach(element => element.replaceWith(dom.createTextNode(`${element.tagName === 'SUP' ? '^' : '_'}{${element.textContent}}`)));
+  if (!schema.marks.textAppearance) {
+    if (dom.querySelector('sup,sub')) warnings.push('Revisa los superíndices y subíndices de texto: se conservaron con marcas ^ y _.');
+    dom.querySelectorAll('sup,sub').forEach(element => element.replaceWith(dom.createTextNode(`${element.tagName === 'SUP' ? '^' : '_'}{${element.textContent}}`)));
+  }
   const parsed = ProseMirrorParser.fromSchema(schema).parse(dom.body).toJSON() as DocNode;
   return mathInDocument(parsed)[0];
 }

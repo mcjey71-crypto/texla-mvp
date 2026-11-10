@@ -101,6 +101,7 @@ export default function ImageDialog({
         alt: alt.trim(),
         width,
         align,
+        ...(initial?.captionMode === 'none' && !caption.trim() && !source.trim() ? {captionMode:'none' as const} : {}),
       });
     } catch (error) {
       if (!controller.signal.aborted)
@@ -181,7 +182,7 @@ export default function ImageDialog({
           <input
             aria-label="Ancho de imagen"
             type="range"
-            min={25}
+            min={initial && initial.width < 25 ? 1 : 25}
             max={100}
             step={5}
             value={width}

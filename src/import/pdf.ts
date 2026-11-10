@@ -4,16 +4,21 @@ import type { Worker as OCRWorker } from 'tesseract.js';
 import type { DocNode } from '../document';
 import { paragraph, MAX_PDF_PAGES, type ImportOptions } from './common';
 import { pdfParagraphs, type PdfTextItem } from './pdfLayout';
+import {richPdfPage,mergePdfTables,type PdfRichState} from './pdfRich';
+import {resolveFormat,type DocumentFormat} from '../formalDocument';
+import {PAGE_FORMATS} from '../pageFormats';
+import type {DocumentFont} from '../fonts';
 GlobalWorkerOptions.workerSrc = workerURL;
-export async function readPdf(bytes: Uint8Array, options: ImportOptions): Promise<{ content: DocNode; pages: number; warnings: string[] }> {
+export async function readPdf(bytes: Uint8Array, options: ImportOptions): Promise<{ content: DocNode; pages: number; warnings: string[]; format:DocumentFormat }> {
   const assetBase = new URL(`${import.meta.env.BASE_URL}import-assets/`, window.location.origin).href;
-  const task = getDocument({ data: bytes, cMapUrl: `${assetBase}pdf/cmaps/`, cMapPacked: true, standardFontDataUrl: `${assetBase}pdf/standard_fonts/`, wasmUrl: `${assetBase}pdf/wasm/`, stopAtErrors: true });
+  const task = getDocument({ data: bytes, fontExtraProperties:true, cMapUrl: `${assetBase}pdf/cmaps/`, cMapPacked: true, standardFontDataUrl: `${assetBase}pdf/standard_fonts/`, wasmUrl: `${assetBase}pdf/wasm/`, stopAtErrors: true });
   const abort = () => { void task.destroy(); };
   options.signal.addEventListener('abort', abort, { once: true });
   let pdf: PDFDocumentProxy | undefined, ocr: OCRWorker | undefined;
   let passwordRequired = false;
   task.onPassword = (_update: (password: string) => void, reason: number) => { passwordRequired = reason === PasswordResponses.NEED_PASSWORD || reason === PasswordResponses.INCORRECT_PASSWORD; void task.destroy(); };
-  const warnings = ['PDF: revisa el orden de lectura, las ecuaciones y las tablas. Se recupera contenido editable, no una réplica de la maquetación. Las imágenes no se conservan.'];
+  const warnings = ['PDF: se recuperan texto, tipografía e imágenes compatibles; las tablas requieren etiquetas estructurales. Revisa fórmulas, celdas combinadas y orden de lectura. La paginación puede variar.'];
+  const richState:PdfRichState={images:0};let pageSize:DocumentFormat['pageSize']='A4';
   const blocks: DocNode[] = []; let textLength = 0, scannedPages = 0, skipped = 0, ocrPages = 0, currentPage = 0;
   const stopOCR = () => { if (ocr) void ocr.terminate(); };
   options.signal.addEventListener('abort', stopOCR, { once: true });
@@ -23,7 +28,9 @@ export async function readPdf(bytes: Uint8Array, options: ImportOptions): Promis
     for (let number = 1; number <= pdf.numPages; number++) {
       currentPage = number; options.signal.throwIfAborted(); options.onProgress(`Leyendo página ${number} de ${pdf.numPages}…`);
       const page = await pdf.getPage(number);
-      const text = await page.getTextContent();
+      richState.tagged=false;
+      const text = await page.getTextContent({includeMarkedContent:true});
+      if(number===1){const v=page.getViewport({scale:1});pageSize=[...PAGE_FORMATS].filter(p=>p.id!=='Continuo').sort((a,b)=>Math.abs(a.width*72/25.4-v.width)+Math.abs(a.height*72/25.4-v.height)-Math.abs(b.width*72/25.4-v.width)-Math.abs(b.height*72/25.4-v.height))[0].id;}
       const items = text.items.filter((item): item is typeof item & PdfTextItem => 'str' in item);
       let content = pdfParagraphs(items);
       if (items.map(item => item.str).join('').trim().length < 15) {
@@ -49,9 +56,13 @@ export async function readPdf(bytes: Uint8Array, options: ImportOptions): Promis
             ocrPages++;
           } finally { canvas.width = 0; canvas.height = 0; }
         } else { skipped++; }
-      }
-      if (number > 1) blocks.push({ type: 'pageBreak' });
-      if (!content.length) blocks.push(paragraph(`[Página ${number}: no se recuperó texto${options.ocr ? '' : '; activa el reconocimiento de texto si está escaneada'}.]`));
+      } else content=await richPdfPage(page,text,options,richState,warnings);
+      const hasRecoveredContent=content.length>0;
+      const merged=mergePdfTables(blocks.at(-1),content[0]);if(merged)content.shift();
+      // Tagged content can reflow as editable tables/paragraphs; forcing its original page ends
+      // would create extra nearly empty pages after fonts and line breaks are reconstructed.
+      if (number > 1 && !merged && !richState.tagged) blocks.push({ type: 'pageBreak' });
+      if (!hasRecoveredContent) blocks.push(paragraph(`[Página ${number}: no se recuperó texto${options.ocr ? '' : '; activa el reconocimiento de texto si está escaneada'}.]`));
       else blocks.push(...content);
       textLength += JSON.stringify(content).length;
       if (textLength > 1_000_000) throw new Error('El contenido del PDF es demasiado extenso. Divide el archivo en partes más pequeñas.');
@@ -62,7 +73,8 @@ export async function readPdf(bytes: Uint8Array, options: ImportOptions): Promis
     if (skipped) warnings.push(`${skipped} página(s) tienen poco o ningún texto seleccionable. Activa «Reconocer páginas escaneadas» y vuelve a convertir para recuperar su texto.`);
     if (ocrPages) warnings.push(`Se aplicó OCR a ${ocrPages} página(s), en español e inglés. Corrige posibles errores; el OCR de texto no reconstruye fórmulas matemáticas ni tablas.`);
     if (scannedPages === pdf.numPages && !options.ocr && itemsTextLength(blocks) === 0) throw new Error('Este PDF parece escaneado. Activa «Reconocer páginas escaneadas» y vuelve a convertir.');
-    return { content: { type: 'doc', content: blocks }, pages: pdf.numPages, warnings };
+    if(richState.header){blocks.unshift(richState.header);warnings.push('El encabezado se muestra al inicio en el editor y en la impresión del navegador; se repite al compilar la exportación LaTeX.');}
+    return { content: { type: 'doc', content: blocks }, pages: pdf.numPages, warnings,format:resolveFormat({pageSize,fontFamily:richState.font as DocumentFont,fontSize:richState.size as DocumentFormat['fontSize'],margin:2.54,lineSpacing:1,paragraphSpacing:0,headingStyle:'formal',pageNumbers:'none'}) };
   } catch (error) {
     if (passwordRequired) throw new Error('El PDF está protegido con contraseña. Guarda una copia desbloqueada e impórtala.');
     if (options.signal.aborted) throw options.signal.reason;

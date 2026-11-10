@@ -1,4 +1,5 @@
 import {validFigure,figures,MAX_FIGURES} from './imageTypes';
+import {textAppearance,blockAppearance} from './richFormatting';
 import type { DocNode } from './document';
 import type { Reference } from './references';
 import { validReference } from './references';
@@ -19,6 +20,8 @@ export function readBackup(raw: string): Omit<SavedDocument,'id'|'updated'> {
   function check(node:DocNode,depth:number) {
     if(!node||typeof node.type!=='string'||depth>30||++count>50000)throw new Error('La estructura del documento no es válida.');
     if(node.attrs?.textAlign != null && !['left','center','right','justify'].includes(node.attrs.textAlign))throw new Error('La copia contiene una alineación no válida.');
+    if(node.attrs?.layout)node.attrs.layout=blockAppearance(node.attrs.layout);
+    for(const mark of node.marks||[])if(mark.type==='textAppearance'&&mark.attrs)mark.attrs.appearance=textAppearance(mark.attrs.appearance);
     if(node.type==='tableCell'||node.type==='tableHeader') {
       for(const key of ['colspan','rowspan']) if(node.attrs?.[key] != null && (!Number.isInteger(node.attrs[key]) || node.attrs[key]<1 || node.attrs[key]>1000))throw new Error('La copia contiene una tabla no válida.');
       if(node.attrs?.colwidth != null && (!Array.isArray(node.attrs.colwidth) || !node.attrs.colwidth.every((n:unknown)=>typeof n==='number' && Number.isFinite(n) && n>=0 && n<=10000)))throw new Error('La copia contiene anchos de tabla no válidos.');

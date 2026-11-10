@@ -89,6 +89,8 @@ Consulta la [investigación de Overleaf, LyX y TeXstudio, funciones incorporadas
 
 Usa **Importar documento** para convertir Word, PDF (incluidos escaneados con OCR opcional), ODT, Markdown, TXT, HTML, LaTeX y copias de Texla en un documento editable. La conversión se realiza en el navegador y permite revisar el resultado antes de guardarlo. Consulta [formatos, límites y funcionamiento del OCR](docs/importing.md).
 
+La importación Word conserva tipografía compatible, resaltados, espaciado, tablas con anchos y celdas combinadas e imágenes. Los PDF con etiquetas estructurales permiten recuperar tablas editables, incluso cuando continúan en otra página. El diseño se reconstruye y puede cambiar la paginación; para mayor fidelidad, prefiere el archivo DOCX original. Los documentos con imágenes se exportan a LaTeX en un ZIP con sus archivos.
+
 ## Plantillas y formato
 
 Once plantillas, incluidas **Tesis general** y **Tesis UTEC — PFC/Capstone**, ocho familias tipográficas (incluida Times New Roman), sangría, márgenes, espaciado, capítulos y bibliografía antes de anexos. Consulta [criterios, fuentes documentales y límites](docs/templates.md). Compartir conserva un único documento; las copias antiguas no se borran automáticamente.

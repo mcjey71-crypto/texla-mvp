@@ -19,6 +19,7 @@ export type FigureAttributes = {
   alt: string;
   width: number;
   align: "left" | "center" | "right";
+  captionMode?: 'none';
 };
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 export function validImageAsset(value: unknown): value is ImageAsset {
@@ -58,9 +59,10 @@ export function validFigure(value: unknown): value is FigureAttributes {
     typeof a.alt === "string" &&
     a.alt.length <= 300 &&
     Number.isInteger(a.width) &&
-    a.width >= 25 &&
+    a.width >= 1 &&
     a.width <= 100 &&
-    ["left", "center", "right"].includes(a.align)
+    ["left", "center", "right"].includes(a.align) &&
+    (a.captionMode === undefined || a.captionMode === 'none')
   );
 }
 export function figures(node: DocNode): FigureAttributes[] {
