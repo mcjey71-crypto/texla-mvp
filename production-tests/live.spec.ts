@@ -136,6 +136,20 @@ test('live shared comments, typography and voice synchronize through the publish
       for (const participant of [page, guest]) await participant.getByRole('button', { name: 'Cerrar comentarios', exact: true }).click();
       console.log('::notice::Published shared font size, anchored comment, reply and resolution passed between two browsers.');
     });
+    await test.step('Synchronize the header and automatic page settings', async () => {
+      await page.getByRole('button', { name: 'Encabezado y pie', exact: true }).click();
+      await page.getByLabel('Contenido del encabezado').selectOption('custom');
+      await page.getByLabel('Texto del encabezado', { exact: true }).fill('Informe compartido');
+      await page.getByLabel('Número inicial de página').fill('7');
+      await page.getByLabel('Estilo de números de página').selectOption('Roman');
+      await page.getByRole('button', { name: 'Listo', exact: true }).click();
+      await expect(guest.getByRole('button', { name: 'Editar encabezado', exact: true })).toContainText('Informe compartido');
+      await guest.getByRole('button', { name: 'Encabezado y pie', exact: true }).click();
+      await expect(guest.getByLabel('Número inicial de página')).toHaveValue('7');
+      await expect(guest.getByLabel('Estilo de números de página')).toHaveValue('Roman');
+      await guest.getByRole('button', { name: 'Listo', exact: true }).click();
+      console.log('::notice::Published header and automatic page settings synchronized between two browsers.');
+    });
     await test.step('Join audio voluntarily and verify idle silence', async () => {
       for (const participant of [page, guest]) {
         expect(await participant.evaluate(() => (window as any).__texlaAudit.streams.length)).toBe(0);

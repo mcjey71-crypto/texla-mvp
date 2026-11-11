@@ -55,6 +55,19 @@ try {
   const figureText=execFileSync('pdftotext',['figures.pdf','-'],{cwd:directory,encoding:'utf8'});
   if(!figureText.includes('Elaboración propia')||!/50\s*%/.test(figureText))throw new Error('Figure caption/source missing from compiled PDF.');
   console.log('Figures: PNG, escaped caption, source and width compiled with pdfLaTeX and XeLaTeX.');
+  for (const roman of [false,true]) {
+    const filename=`running-pages-${roman?'roman':'arabic'}.tex`;
+    const content={type:'doc',content:[p('Primera hoja.'),{type:'pageBreak'},p('Segunda hoja.'),{type:'pageBreak'},p('Tercera hoja.')]};
+    writeFileSync(join(directory,filename),exportLatex('Páginas formales',content,[],'ieee',{headerMode:'custom',headerText:'Instituto & proyectos',footerText:'Proyecto final',pageNumbers:roman?'top-right':'bottom-right',pageNumberStyle:roman?'roman':'arabic',pageNumberStart:5,numberFirstPage:!roman,pageNumberPrefix:'P. '}));
+    for (const engine of ['pdflatex','xelatex']) {
+      execFileSync(engine,['-no-shell-escape','-halt-on-error','-interaction=nonstopmode',filename],{cwd:directory,stdio:'pipe',timeout:60000});
+      const pages=execFileSync('pdftotext',[filename.replace('.tex','.pdf'),'-'],{cwd:directory,encoding:'utf8'}).split('\f').filter(p=>p.trim());
+      if(pages.length!==3 || pages.some(p=>!p.includes('Instituto & proyectos')||!p.includes('Proyecto final')||!p.replace(/\s+/g,'').toUpperCase().includes('TEXLADOCS')))throw new Error(`${engine}: running header/footer missing from printed pages.`);
+      const labels=roman?['','vi','vii']:['5','6','7'];
+      for(let i=0;i<3;i++)if(labels[i]?!pages[i].includes(`P. ${labels[i]}`):pages[i].includes('P. v'))throw new Error(`${engine}: initial page number or hidden first page is incorrect.`);
+    }
+  }
+  console.log('Page furniture: repeating headers, brand, footer text, initial number, Roman style and hidden first number verified in pdfLaTeX and XeLaTeX PDFs.');
   const utec=createTemplate('utec');
   writeFileSync(join(directory,'utec-xetex.tex'),exportLatex(utec.title,utec.content,[],utec.citationStyle,utec.format));
   execFileSync('xelatex',['-no-shell-escape','-halt-on-error','-interaction=nonstopmode','utec-xetex.tex'],{cwd:directory,stdio:'pipe',timeout:60000});

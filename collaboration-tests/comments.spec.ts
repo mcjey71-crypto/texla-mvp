@@ -52,6 +52,23 @@ test('shared comments and simultaneous replies merge across browsers, persist of
     await guest.locator('.tiptap p').first().evaluate(el => { const editor=(el.closest('.tiptap') as any).editor;const from=editor.view.posAtDOM(el,0);editor.commands.setTextSelection({from,to:from+15}); });
     await guest.getByLabel('Tamaño de letra en puntos').fill('20'); await guest.getByLabel('Tamaño de letra en puntos').press('Enter');
     await expect(page.locator('.tiptap span[style*="font-size: 20pt"]')).toBeVisible();
+    await page.getByRole('button', { name: 'Encabezado y pie', exact: true }).click();
+    await page.getByLabel('Contenido del encabezado').selectOption('custom');
+    await page.getByLabel('Texto del encabezado', { exact: true }).fill('Instituto compartido');
+    await page.getByLabel('Texto del pie de página', { exact: true }).fill('Proyecto conjunto');
+    await page.getByLabel('Número inicial de página').fill('7');
+    await page.getByLabel('Estilo de números de página').selectOption('Roman');
+    await page.getByLabel('Numeración de páginas', { exact: true }).selectOption('top-right');
+    await page.getByLabel('Mostrar número en la primera página').uncheck();
+    await page.getByRole('button', { name: 'Listo', exact: true }).click();
+    await expect(guest.getByRole('button', { name: 'Editar encabezado', exact: true })).toContainText('Instituto compartido');
+    await expect(guest.getByRole('button', { name: 'Editar pie de página', exact: true })).toContainText('Proyecto conjunto');
+    await guest.getByRole('button', { name: 'Encabezado y pie', exact: true }).click();
+    await expect(guest.getByLabel('Número inicial de página')).toHaveValue('7');
+    await expect(guest.getByLabel('Estilo de números de página')).toHaveValue('Roman');
+    await expect(guest.getByLabel('Numeración de páginas', { exact: true })).toHaveValue('top-right');
+    await expect(guest.getByLabel('Mostrar número en la primera página')).not.toBeChecked();
+    await guest.getByRole('button', { name: 'Listo', exact: true }).click();
     expect(keyWarnings).toEqual([]);
   } finally { await context.close(); }
 });

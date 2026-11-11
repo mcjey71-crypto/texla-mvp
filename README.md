@@ -2,6 +2,12 @@
 
 Editor visual de documentos formales con exportación a LaTeX. Primera versión gratuita, construida con React, TypeScript, Tiptap, KaTeX y MathLive.
 
+## Encabezado, pie y numeración
+
+Los documentos nuevos tienen el encabezado en blanco y mantienen la marca Texla Docs en el pie. Abre **Encabezado y pie**, o pulsa en el área superior/inferior de la hoja, para escribir un encabezado y un pie personalizados. También puedes ocultar la marca. Los encabezados importados se conservan y se editan sobre el documento; elegir «En blanco» los oculta sin borrarlos.
+
+La numeración es automática al imprimir, guardar como PDF o compilar el archivo LaTeX. Puedes elegir su posición, número inicial, cifras arábigas o romanas, texto antes/después y ocultar el primer número (esa página sigue contando). El editor es un lienzo continuo: la paginación real se consulta en la vista de impresión. Los textos personalizados del encabezado y pie se repiten en cada página; en la impresión del navegador, los encabezados originales importados permanecen como contenido inicial. Las pruebas de PDF usan Chromium con soporte de cajas de margen CSS. Los ajustes se guardan con el documento, sus copias y su versión compartida; no requieren una migración de base de datos.
+
 ## Desarrollo
 
 Requiere Node.js 22 o posterior y npm. Se verificó con Node.js 24.
