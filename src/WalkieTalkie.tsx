@@ -28,7 +28,7 @@ export default function WalkieTalkie({ session }: { session: SharedSession }) {
     voice.active && voice.peers.some((peer) => peer.id === session.voicePeer);
   return (
     <section
-      className={`walkie-panel ${expanded ? "walkie-expanded" : "walkie-compact"} ${voice.active ? "walkie-active" : ""} ${voice.sending ? "walkie-sending" : ""}`}
+      className={`walkie-panel walkie-dock ${expanded ? "walkie-expanded" : "walkie-compact"} ${voice.active ? "walkie-active" : ""} ${voice.sending ? "walkie-sending" : ""}`}
       aria-label="Walkie-talkie del documento"
     >
       <div className="walkie-identity">
@@ -59,13 +59,15 @@ export default function WalkieTalkie({ session }: { session: SharedSession }) {
             </p>
             <button
               className="walkie-join"
+              aria-label={voice.busy ? "Preparando micrófono…" : "Activar walkie-talkie"}
+              title="Activar walkie-talkie"
               disabled={
                 !session.voiceConnected || !session.voiceAvailable || voice.busy
               }
               onClick={() => void voice.join()}
             >
               <Mic size={16} />
-              {voice.busy ? "Preparando micrófono…" : "Activar walkie-talkie"}
+              <span className="walkie-join-label">{voice.busy ? "Preparando micrófono…" : "Activar walkie-talkie"}</span>
             </button>
             {voice.busy && (
               <button onClick={() => voice.leave()}>Cancelar audio</button>
@@ -131,13 +133,13 @@ export default function WalkieTalkie({ session }: { session: SharedSession }) {
                 onContextMenu={(event) => event.preventDefault()}
               >
                 <Mic size={18} />
-                {voice.sending
+                <span className="walkie-talk-label">{voice.sending
                   ? "Transmitiendo…"
                   : voice.pending
                     ? "Solicitando turno…"
                     : occupied
                       ? "Canal ocupado"
-                      : <span>Hablar <kbd className="walkie-shortcut">Ctrl + Mayús + Espacio</kbd></span>}
+                      : <span>Hablar <kbd className="walkie-shortcut">Ctrl + Mayús + Espacio</kbd></span>}</span>
               </button>
               <button
                 className="walkie-icon"

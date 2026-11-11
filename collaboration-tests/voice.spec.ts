@@ -23,7 +23,8 @@ test('real audio reaches another browser only while held, preserves editing, mut
  try{
   await guest.goto(link);await expect(guest.locator('.collaboration-status')).toContainText('Guardado en el servidor');await activate(page);await activate(guest);await expect(page.locator('.walkie-heading')).toContainText('2 en el canal');
   await expect(page.locator('.walkie-panel')).toHaveClass(/walkie-compact/);
-  expect((await page.locator('.walkie-panel').boundingBox())!.height).toBeLessThan(85);
+  expect((await page.locator('.walkie-panel').boundingBox())!.width).toBeLessThan(52);
+  await expect(page.locator('.walkie-panel')).toHaveCSS('position','fixed');
   await page.getByRole('button',{name:'Mostrar detalles del walkie-talkie'}).click();await expect(page.locator('.walkie-hint')).toBeVisible();
   await page.getByRole('button',{name:'Reducir walkie-talkie'}).click();await expect(page.locator('.walkie-hint')).toBeHidden();await expect(page.locator('.walkie-heading')).toContainText('2 en el canal');
   await page.waitForTimeout(300);expect(await page.evaluate(()=>(window as any).__voice.sent)).toBe(0);
@@ -34,6 +35,22 @@ test('real audio reaches another browser only while held, preserves editing, mut
   await page.mouse.up();await expect(guest.locator('.walkie-status')).toContainText('Canal libre');const sent=await page.evaluate(()=>(window as any).__voice.sent);await page.waitForTimeout(400);expect(await page.evaluate(()=>(window as any).__voice.sent)).toBe(sent);await expect.poll(()=>energy(guest)).toBeLessThan(.001);
   await page.getByRole('button',{name:'Despejar pantalla',exact:true}).click();await expect(button).toBeVisible();await button.focus();await page.keyboard.down('Space');await expect(page.locator('.walkie-status')).toContainText('transmitiendo');await page.keyboard.up('Space');await expect(page.locator('.walkie-status')).toContainText('Canal libre');
   await button.hover();await page.mouse.down();await expect(page.locator('.walkie-status')).toContainText('transmitiendo');await page.evaluate(()=>window.dispatchEvent(new Event('blur')));await expect(page.locator('.walkie-status')).toContainText('Canal libre');await page.mouse.up();
+  await page.setViewportSize({width:1533,height:738});await page.locator('.canvas').evaluate(el=>el.scrollTop=0);
+  const paper=await page.locator('.paper').boundingBox(), dock=await page.locator('.walkie-panel').boundingBox(), restore=await page.getByRole('button',{name:'Mostrar herramientas',exact:true}).boundingBox();
+  expect(paper!.y).toBeGreaterThanOrEqual(0);expect(paper!.y).toBeLessThan(30);expect(dock!.x+dock!.width).toBeLessThan(paper!.x);expect(restore!.width).toBeLessThanOrEqual(34);expect(restore!.height).toBeLessThanOrEqual(34);
+  await page.screenshot({path:'/tmp/texla-voice-left-focus.png'});
+  await page.setViewportSize({width:390,height:844});
+  await page.locator('.canvas').evaluate(el=>el.scrollTop=0);
+  const mobilePaper=await page.locator('.paper').boundingBox(), mobileDock=await page.locator('.walkie-panel').boundingBox();
+  expect(mobilePaper!.y).toBeGreaterThanOrEqual(0);expect(mobilePaper!.y).toBeLessThan(30);expect(mobileDock!.x+mobileDock!.width).toBeLessThan(mobilePaper!.x);
+  expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);
+  await page.screenshot({path:'/tmp/texla-voice-left-mobile.png'});
+  await page.getByRole('button',{name:'Mostrar herramientas',exact:true}).click();await expect(page.locator('.toolbar')).toBeVisible();await expect(page.locator('.walkie-heading')).toContainText('2 en el canal');
+  for(const width of [1000,1200,1700]){
+   await page.setViewportSize({width,height:844});
+   const sheet=await page.locator('.paper').boundingBox(), rail=await page.locator('.walkie-panel').boundingBox();
+   expect(rail!.x+rail!.width).toBeLessThan(sheet!.x);
+  }
   await page.getByRole('button',{name:'Desactivar walkie-talkie',exact:true}).click();expect(await page.evaluate(()=>(window as any).__voice.streams.every((stream:MediaStream)=>stream.getTracks().every(track=>track.readyState==='ended')))).toBe(true);
   await expect(guest.locator('.walkie-heading')).toContainText('1 en el canal');await guest.evaluate(()=>window.dispatchEvent(new Event('offline')));await expect(guest.getByRole('button',{name:'Activar walkie-talkie',exact:true})).toBeVisible();expect(await guest.evaluate(()=>(window as any).__voice.streams.every((stream:MediaStream)=>stream.getTracks().every(track=>track.readyState==='ended')))).toBe(true);
   const stored=await page.evaluate(()=>localStorage.getItem('texla-docs-v1'));expect(stored).not.toContain('voice:audio');expect(stored).not.toContain('voiceTurn');

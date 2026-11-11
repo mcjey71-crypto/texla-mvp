@@ -160,13 +160,24 @@ test('live shared comments, typography and voice synchronize through the publish
       }
       await expect(page.locator('.walkie-heading')).toContainText('2 en el canal');
       await expect(page.locator('.walkie-panel')).toHaveClass(/walkie-compact/);
-      expect((await page.locator('.walkie-panel').boundingBox())!.height).toBeLessThan(85);
+      expect((await page.locator('.walkie-panel').boundingBox())!.width).toBeLessThan(52);
+  await expect(page.locator('.walkie-panel')).toHaveCSS('position','fixed');
       await page.getByRole('button',{name:'Mostrar detalles del walkie-talkie'}).click();
       await expect(page.locator('.walkie-hint')).toBeVisible();
       await page.getByRole('button',{name:'Reducir walkie-talkie'}).click();
 
       expect(await page.evaluate(() => (window as any).__texlaAudit.sent)).toBe(0);
       expect(await energy(guest)).toBeLessThan(.001);
+    });
+    await test.step('Recover vertical writing space with the left voice dock', async () => {
+      await page.getByRole('button',{name:'Despejar pantalla',exact:true}).click();
+      await page.locator('.canvas').evaluate(el=>el.scrollTop=0);
+      const paper=await page.locator('.paper').boundingBox();
+      expect(paper!.y).toBeGreaterThanOrEqual(0);expect(paper!.y).toBeLessThan(30);
+      const restore=page.getByRole('button',{name:'Mostrar herramientas',exact:true});
+      expect((await restore.boundingBox())!.width).toBeLessThanOrEqual(34);
+      await restore.click();await expect(page.locator('.toolbar')).toBeVisible();
+      await expect(page.locator('.walkie-heading')).toContainText('2 en el canal');
     });
     await test.step('Hold the voice shortcut from the editor and release a modifier', async () => {
       await page.locator('.tiptap p').first().click();
