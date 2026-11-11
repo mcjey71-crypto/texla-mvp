@@ -22,6 +22,10 @@ test('real audio reaches another browser only while held, preserves editing, mut
  const context=await browser.newContext({permissions:['microphone']});const guest=await context.newPage();await probe(guest);
  try{
   await guest.goto(link);await expect(guest.locator('.collaboration-status')).toContainText('Guardado en el servidor');await activate(page);await activate(guest);await expect(page.locator('.walkie-heading')).toContainText('2 en el canal');
+  await expect(page.locator('.walkie-panel')).toHaveClass(/walkie-compact/);
+  expect((await page.locator('.walkie-panel').boundingBox())!.height).toBeLessThan(85);
+  await page.getByRole('button',{name:'Mostrar detalles del walkie-talkie'}).click();await expect(page.locator('.walkie-hint')).toBeVisible();
+  await page.getByRole('button',{name:'Reducir walkie-talkie'}).click();await expect(page.locator('.walkie-hint')).toBeHidden();await expect(page.locator('.walkie-heading')).toContainText('2 en el canal');
   await page.waitForTimeout(300);expect(await page.evaluate(()=>(window as any).__voice.sent)).toBe(0);
   const button=page.getByRole('button',{name:'Mantener pulsado para hablar'});await button.hover();await page.mouse.down();await expect(page.locator('.walkie-status')).toContainText('Tu micrófono está transmitiendo');await expect(guest.locator('.walkie-status')).toContainText('Ana está hablando');await expect(guest.getByRole('button',{name:'Mantener pulsado para hablar'})).toBeDisabled();
   await expect.poll(()=>energy(guest)).toBeGreaterThan(.01);expect(await energy(page)).toBeLessThan(.001);

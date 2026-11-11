@@ -60,6 +60,9 @@ test('published editor loads and reports the enabled login providers', async ({ 
   page.on('pageerror', error => errors.push(error.name));
   await page.goto('./');
   await expect(page.locator('.tiptap')).toBeVisible();
+  await page.getByRole('button',{name:'Atajos de teclado',exact:true}).first().click();
+  await expect(page.getByRole('dialog')).toContainText('Insertar ecuación');
+  await page.getByRole('button',{name:'Volver al documento'}).click();
   const settings = page.waitForResponse(response => new URL(response.url()).pathname === '/auth/v1/settings');
   await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
   const response = await settings;
@@ -156,6 +159,12 @@ test('live shared comments, typography and voice synchronize through the publish
         await participant.getByRole('button', { name: 'Activar walkie-talkie', exact: true }).click();
       }
       await expect(page.locator('.walkie-heading')).toContainText('2 en el canal');
+      await expect(page.locator('.walkie-panel')).toHaveClass(/walkie-compact/);
+      expect((await page.locator('.walkie-panel').boundingBox())!.height).toBeLessThan(85);
+      await page.getByRole('button',{name:'Mostrar detalles del walkie-talkie'}).click();
+      await expect(page.locator('.walkie-hint')).toBeVisible();
+      await page.getByRole('button',{name:'Reducir walkie-talkie'}).click();
+
       expect(await page.evaluate(() => (window as any).__texlaAudit.sent)).toBe(0);
       expect(await energy(guest)).toBeLessThan(.001);
     });

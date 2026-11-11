@@ -8,6 +8,14 @@ Los documentos nuevos tienen el encabezado en blanco y mantienen la marca Texla 
 
 La numeración es automática al imprimir, guardar como PDF o compilar el archivo LaTeX. Puedes elegir su posición, número inicial, cifras arábigas o romanas, texto antes/después y ocultar el primer número (esa página sigue contando). El editor es un lienzo continuo: la paginación real se consulta en la vista de impresión. Los textos personalizados del encabezado y pie se repiten en cada página; en la impresión del navegador, los encabezados originales importados permanecen como contenido inicial. Las pruebas de PDF usan Chromium con soporte de cajas de margen CSS. Los ajustes se guardan con el documento, sus copias y su versión compartida; no requieren una migración de base de datos.
 
+## Espacio de redacción y atajos
+
+El panel Estructura tiene espaciado compacto y resalta el título donde está el cursor. El walkie-talkie se abre como una barra reducida: conserva el botón para hablar, estado del canal, silencio y salida; la flecha despliega las instrucciones. Reducirlo no desconecta a los participantes. No transmite hasta mantener pulsado el botón (o Espacio/Enter mientras ese botón tiene el foco).
+
+**Atajos de teclado** abre la guía completa; también se abre con Ctrl + / (⌘ + / en Mac). Dentro del documento: Ctrl + Alt + E abre ecuaciones, Ctrl + Alt + R referencias, Ctrl + Alt + T tablas, Ctrl + Enter inserta un salto de página y Ctrl + Mayús + punto/coma aumenta/disminuye la letra. Ctrl + Alt + M crea un comentario; Ctrl + Mayús + Enter despeja la pantalla. Los atajos de inserción no actúan en los campos de los diálogos.
+
+Los comentarios, respuestas y su estado resuelto se guardan dentro del documento compartido y se sincronizan con todos sus participantes. La prueba de colaboración verifica tres navegadores independientes, respuestas concurrentes, reconexión y recarga. Deben abrir el mismo enlace compartido y conectar con el servidor; una copia privada es otro documento.
+
 ## Desarrollo
 
 Requiere Node.js 22 o posterior y npm. Se verificó con Node.js 24.

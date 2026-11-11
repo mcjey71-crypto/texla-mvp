@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from "react";
-import { Mic, Radio, Volume2, VolumeX, X } from "lucide-react";
+import { Mic, Radio, Volume2, VolumeX, X, ChevronDown, ChevronUp } from "lucide-react";
 import type { SharedSession } from "./SharedSession";
 import { WalkieSession } from "./WalkieSession";
 export default function WalkieTalkie({ session }: { session: SharedSession }) {
   const [voice, setVoice] = useState<WalkieSession | null>(null);
+  const [expanded, setExpanded] = useState(false);
   const [, refresh] = useState(0);
   const pointer = useRef<number | null>(null);
   useEffect(() => {
@@ -25,7 +26,7 @@ export default function WalkieTalkie({ session }: { session: SharedSession }) {
     voice.active && voice.peers.some((peer) => peer.id === session.voicePeer);
   return (
     <section
-      className={`walkie-panel ${voice.active ? "walkie-active" : ""} ${voice.sending ? "walkie-sending" : ""}`}
+      className={`walkie-panel ${expanded ? "walkie-expanded" : "walkie-compact"} ${voice.active ? "walkie-active" : ""} ${voice.sending ? "walkie-sending" : ""}`}
       aria-label="Walkie-talkie del documento"
     >
       <div className="walkie-identity">
@@ -85,6 +86,7 @@ export default function WalkieTalkie({ session }: { session: SharedSession }) {
                 className="walkie-talk"
                 disabled={!ready || occupied}
                 aria-label="Mantener pulsado para hablar"
+                title="Mantén pulsado para hablar; suelta para terminar. Con el botón enfocado: Espacio o Enter."
                 aria-pressed={voice.sending}
                 onPointerDown={(event) => {
                   if (event.button !== 0 || pointer.current !== null) return;
@@ -180,6 +182,9 @@ export default function WalkieTalkie({ session }: { session: SharedSession }) {
           </>
         )}
       </div>
+      <button className="walkie-details-toggle walkie-icon" aria-label={expanded ? "Reducir walkie-talkie" : "Mostrar detalles del walkie-talkie"} aria-expanded={expanded} title={expanded ? "Reducir" : "Detalles del canal"} onClick={()=>{voice.release();setExpanded(value=>!value);}}>
+        {expanded ? <ChevronUp size={16}/> : <ChevronDown size={16}/>}
+      </button>
       {voice.notice && (
         <p className="walkie-note" role="status">
           {voice.notice}

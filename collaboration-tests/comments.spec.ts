@@ -18,6 +18,7 @@ test('shared comments and simultaneous replies merge across browsers, persist of
   const link = await page.getByLabel('Enlace de edición').inputValue();
   await page.getByRole('button', { name: 'Cerrar', exact: true }).click();
   const context = await browser.newContext(); const guest = await context.newPage();
+  const thirdContext = await browser.newContext(); const third = await thirdContext.newPage();
   try {
     await guest.goto(link); await expect(guest.locator('.collaboration-status')).toContainText('Guardado en el servidor');
     await expect(page.locator('.collaboration-status')).toContainText('Guardado en el servidor');
@@ -45,6 +46,11 @@ test('shared comments and simultaneous replies merge across browsers, persist of
     await expect(page.locator('.comment-card')).toHaveCount(1);
     await guest.reload(); await guest.getByRole('button', { name: 'Comentarios en equipo Documento compartido' }).click(); await expect(guest.locator('.collaboration-status')).toContainText('Guardado en el servidor');
     await openComments(guest); await expect(guest.locator('.comment-message')).toHaveCount(4);
+    await third.goto(link);await expect(third.locator('.collaboration-status')).toContainText('Guardado en el servidor');
+    await openComments(third);await expect(third.locator('.comment-message')).toHaveCount(4);
+    await third.getByLabel('Responder al comentario').fill('Revisión de la tercera participante.');
+    await third.getByRole('button',{name:'Responder',exact:true}).click();
+    for(const participant of [page,guest,third]){await expect(participant.locator('.comment-message')).toHaveCount(5);await expect(participant.locator('.comment-list')).toContainText('Revisión de la tercera participante.');}
     await guest.getByRole('button', { name: 'Cerrar comentarios', exact: true }).click();
     await expect(guest.getByRole('button', { name: 'Activar walkie-talkie', exact: true })).toHaveCount(1);
     await page.getByRole('button', { name: 'Cerrar comentarios', exact: true }).click();
@@ -70,5 +76,5 @@ test('shared comments and simultaneous replies merge across browsers, persist of
     await expect(guest.getByLabel('Mostrar número en la primera página')).not.toBeChecked();
     await guest.getByRole('button', { name: 'Listo', exact: true }).click();
     expect(keyWarnings).toEqual([]);
-  } finally { await context.close(); }
+  } finally { await context.close(); await thirdContext.close(); }
 });
