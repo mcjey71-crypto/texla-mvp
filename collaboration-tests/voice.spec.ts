@@ -84,3 +84,29 @@ test('separate documents cannot hear one another and a held turn ends after thir
  await probe(page);await share(page);await activate(page);const otherContext=await browser.newContext({permissions:['microphone']});const other=await otherContext.newPage();await probe(other);
  try{await share(other,'Otro documento');await activate(other);const button=page.getByRole('button',{name:'Mantener pulsado para hablar'});await button.hover();await page.mouse.down();await expect(page.locator('.walkie-status')).toContainText('transmitiendo');await page.waitForTimeout(500);await expect(other.locator('.walkie-status')).toContainText('Canal libre');expect(await energy(other)).toBeLessThan(.001);await expect(page.locator('.walkie-status')).toContainText('Canal libre',{timeout:35000});expect(await page.evaluate(()=>(window as any).__voice.streams.every((stream:MediaStream)=>stream.getAudioTracks().every(track=>!track.enabled)))).toBe(true);await page.mouse.up();await expect(button).toBeEnabled();await page.screenshot({path:'/tmp/texla-walkie-desktop.png'});await page.setViewportSize({width:390,height:844});await page.waitForTimeout(350);await page.screenshot({path:'/tmp/texla-walkie-mobile.png'});expect(await page.evaluate(()=>document.documentElement.scrollWidth)).toBeLessThanOrEqual(390);}finally{await otherContext.close();}
 });
+
+test('global push-to-talk works while writing, releases on any chord key or blur, and never enables a disabled microphone',async({page,browser})=>{
+ await probe(page);const link=await share(page);await page.locator('.tiptap p').last().click();
+ await page.keyboard.press('Control+Shift+Space');expect(await page.evaluate(()=>(window as any).__voice.streams.length)).toBe(0);
+ const context=await browser.newContext({permissions:['microphone']});const guest=await context.newPage();await probe(guest);
+ try{
+  await guest.goto(link);await expect(guest.locator('.collaboration-status')).toContainText('Guardado en el servidor');await activate(page);await activate(guest);
+  await page.locator('.tiptap p').last().click();
+  const before=await page.locator('.tiptap').evaluate(el=>JSON.stringify((el as any).editor.getJSON()));
+  for(const released of ['Space','Shift','Control','blur']){
+   await page.keyboard.down('Control');await page.keyboard.down('Shift');await page.keyboard.down('Space');
+   await expect(page.locator('.walkie-status')).toContainText('transmitiendo');await expect.poll(()=>energy(guest)).toBeGreaterThan(.01);
+   // Repeated keydown must not start a second turn or insert characters.
+   await page.keyboard.down('Space');
+   if(released==='blur')await page.evaluate(()=>window.dispatchEvent(new Event('blur')));else await page.keyboard.up(released);
+   await expect(page.locator('.walkie-status')).toContainText('Canal libre');await expect.poll(()=>energy(guest)).toBeLessThan(.001);
+   if(released==='Shift'||released==='Control')await page.keyboard.down('Space');
+   await page.keyboard.up('Space');await page.keyboard.up('Shift');await page.keyboard.up('Control');
+   expect(await page.locator('.tiptap').evaluate(el=>JSON.stringify((el as any).editor.getJSON()))).toBe(before);
+  }
+  await page.getByRole('button',{name:'Desactivar walkie-talkie',exact:true}).click();await page.locator('.tiptap p').last().click();
+  const streams=await page.evaluate(()=>(window as any).__voice.streams.length);
+  await page.keyboard.press('Control+Shift+Space');expect(await page.evaluate(()=>(window as any).__voice.streams.length)).toBe(streams);
+  expect(await page.evaluate(()=>(window as any).__voice.streams.every((stream:MediaStream)=>stream.getTracks().every(t=>t.readyState==='ended')))).toBe(true);
+ }finally{await context.close();}
+});

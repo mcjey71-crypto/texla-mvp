@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Mic, Radio, Volume2, VolumeX, X, ChevronDown, ChevronUp } from "lucide-react";
 import type { SharedSession } from "./SharedSession";
+import { useWalkieShortcut } from "./useWalkieShortcut";
 import { WalkieSession } from "./WalkieSession";
 export default function WalkieTalkie({ session }: { session: SharedSession }) {
   const [voice, setVoice] = useState<WalkieSession | null>(null);
@@ -19,6 +20,7 @@ export default function WalkieTalkie({ session }: { session: SharedSession }) {
   useEffect(() => {
     if (!voice?.sending && !voice?.pending) pointer.current = null;
   }, [voice, voice?.sending, voice?.pending]);
+  useWalkieShortcut(voice);
   if (!voice) return null;
   const speaker = voice.peers.find((peer) => peer.id === voice.floor?.peer);
   const occupied = !!voice.floor && voice.floor.peer !== session.voicePeer;
@@ -86,7 +88,8 @@ export default function WalkieTalkie({ session }: { session: SharedSession }) {
                 className="walkie-talk"
                 disabled={!ready || occupied}
                 aria-label="Mantener pulsado para hablar"
-                title="Mantén pulsado para hablar; suelta para terminar. Con el botón enfocado: Espacio o Enter."
+                aria-keyshortcuts="Control+Shift+Space"
+                title="Mantén Ctrl + Mayús + Espacio desde el documento para hablar. Suelta cualquier tecla para terminar."
                 aria-pressed={voice.sending}
                 onPointerDown={(event) => {
                   if (event.button !== 0 || pointer.current !== null) return;
@@ -134,7 +137,7 @@ export default function WalkieTalkie({ session }: { session: SharedSession }) {
                     ? "Solicitando turno…"
                     : occupied
                       ? "Canal ocupado"
-                      : "Mantén pulsado para hablar"}
+                      : <span>Hablar <kbd className="walkie-shortcut">Ctrl + Mayús + Espacio</kbd></span>}
               </button>
               <button
                 className="walkie-icon"
@@ -176,7 +179,7 @@ export default function WalkieTalkie({ session }: { session: SharedSession }) {
               {voice.muted ? " Sonido silenciado." : ""}
             </p>
             <small className="walkie-hint">
-              Al soltar dejas de transmitir · Hasta 30 s por turno · Sin
+              Mantén Ctrl + Mayús + Espacio (también en Mac) o el botón para hablar. Suelta para terminar · Hasta 30 s por turno · Sin
               grabación en Texla
             </small>
           </>

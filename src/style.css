@@ -242,3 +242,4 @@
  .walkie-compact .walkie-icon{min-width:28px;padding:3px}
  .shortcut-guide dl>div{align-items:flex-start;font-size:10px}
 }
+.walkie-talk>span{display:flex;align-items:center;gap:8px}.walkie-shortcut{font:9px 'DM Sans',sans-serif;opacity:.8;white-space:nowrap}.walkie-compact .walkie-shortcut{font-size:8px}@media(max-width:900px){.walkie-talk>span{flex-wrap:wrap;justify-content:center;gap:2px}.walkie-shortcut{white-space:normal}}

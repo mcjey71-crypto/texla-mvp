@@ -20,7 +20,11 @@ test('writing shortcuts change selected text, insert one page break and open too
     if(key==='e')await expect(page.getByRole('dialog').locator(selector).first()).toBeVisible();
     await page.keyboard.press('Escape');await expect(page.getByRole('dialog')).toHaveCount(0);
   }
-  await editor.click();await page.keyboard.press('Control+/');await expect(page.getByRole('dialog')).toContainText('Aumentar / disminuir letra');
+  await editor.click();await page.keyboard.press('Control+Alt+k');await expect(page.getByRole('dialog')).toContainText('Aumentar / disminuir letra');
+  await page.getByRole('button',{name:'Volver al documento'}).click();
+  // Spanish keyboards produce '/' with Shift + 7; keep this legacy alias working.
+  await editor.dispatchEvent('keydown',{key:'/',code:'Digit7',ctrlKey:true,shiftKey:true,bubbles:true});
+  await expect(page.getByRole('dialog')).toContainText('Ctrl + Alt + K');
   await page.getByRole('button',{name:'Volver al documento'}).click();
   // Mac modifier path, synthesized on Linux, invokes the same application action.
   await page.keyboard.press('Meta+Alt+t');await expect(page.getByLabel('Filas',{exact:true})).toBeVisible();await page.keyboard.press('Escape');

@@ -168,6 +168,16 @@ test('live shared comments, typography and voice synchronize through the publish
       expect(await page.evaluate(() => (window as any).__texlaAudit.sent)).toBe(0);
       expect(await energy(guest)).toBeLessThan(.001);
     });
+    await test.step('Hold the voice shortcut from the editor and release a modifier', async () => {
+      await page.locator('.tiptap p').first().click();
+      const before=await page.locator('.tiptap').evaluate(el=>JSON.stringify((el as any).editor.getJSON()));
+      await page.keyboard.down('Control');await page.keyboard.down('Shift');await page.keyboard.down('Space');
+      await expect.poll(()=>energy(guest)).toBeGreaterThan(.01);
+      await page.keyboard.up('Shift');await expect.poll(()=>energy(guest)).toBeLessThan(.001);
+      await page.keyboard.up('Space');await page.keyboard.up('Control');
+      expect(await page.locator('.tiptap').evaluate(el=>JSON.stringify((el as any).editor.getJSON()))).toBe(before);
+      console.log('::notice::Published global push-to-talk shortcut delivered audio and stopped on modifier release without changing the document.');
+    });
     await test.step('Transmit A to B while edits still synchronize', async () => {
       const button = page.getByRole('button', { name: 'Mantener pulsado para hablar', exact: true });
       await button.hover(); await page.mouse.down();

@@ -10,9 +10,9 @@ La numeración es automática al imprimir, guardar como PDF o compilar el archiv
 
 ## Espacio de redacción y atajos
 
-El panel Estructura tiene espaciado compacto y resalta el título donde está el cursor. El walkie-talkie se abre como una barra reducida: conserva el botón para hablar, estado del canal, silencio y salida; la flecha despliega las instrucciones. Reducirlo no desconecta a los participantes. No transmite hasta mantener pulsado el botón (o Espacio/Enter mientras ese botón tiene el foco).
+El panel Estructura tiene espaciado compacto y resalta el título donde está el cursor. El walkie-talkie se abre como una barra reducida: conserva el botón para hablar, estado del canal, silencio y salida; la flecha despliega las instrucciones. Reducirlo no desconecta a los participantes. Con el canal activado, mantén Ctrl + Mayús + Espacio desde cualquier parte de Texla para hablar (Control también en Mac). Al soltar cualquiera de esas teclas o cambiar de ventana, se detiene la transmisión. No abre el micrófono si el canal está desactivado. También puedes mantener el botón o Espacio/Enter mientras ese botón tiene el foco.
 
-**Atajos de teclado** abre la guía completa; también se abre con Ctrl + / (⌘ + / en Mac). Dentro del documento: Ctrl + Alt + E abre ecuaciones, Ctrl + Alt + R referencias, Ctrl + Alt + T tablas, Ctrl + Enter inserta un salto de página y Ctrl + Mayús + punto/coma aumenta/disminuye la letra. Ctrl + Alt + M crea un comentario; Ctrl + Mayús + Enter despeja la pantalla. Los atajos de inserción no actúan en los campos de los diálogos.
+**Atajos de teclado** abre la guía completa; también se abre con Ctrl + Alt + K (⌘ + ⌥ + K en Mac). Dentro del documento: Ctrl + Alt + E abre ecuaciones, Ctrl + Alt + R referencias, Ctrl + Alt + T tablas, Ctrl + Enter inserta un salto de página y Ctrl + Mayús + punto/coma aumenta/disminuye la letra. Ctrl + Alt + M crea un comentario; Ctrl + Mayús + Enter despeja la pantalla. Los atajos de inserción no actúan en los campos de los diálogos.
 
 Los comentarios, respuestas y su estado resuelto se guardan dentro del documento compartido y se sincronizan con todos sus participantes. La prueba de colaboración verifica tres navegadores independientes, respuestas concurrentes, reconexión y recarga. Deben abrir el mismo enlace compartido y conectar con el servidor; una copia privada es otro documento.
 
