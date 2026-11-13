@@ -18,6 +18,8 @@ Las referencias de otros formatos se conservan como texto, cuando están present
 
 ## Fidelidad del diseño
 
+Las imágenes de Word en línea respetan la alineación de su párrafo, incluidos los estilos heredados. En las imágenes flotantes tiene prioridad el anclaje horizontal de la imagen: los desplazamientos respecto a la página, los márgenes o la columna se adaptan a izquierda, centro o derecha. Esto conserva la alineación, pero no reproduce las coordenadas absolutas, la altura ni el ajuste de texto alrededor de una imagen flotante de Word. Revisa esos detalles después de importar.
+
 Si tienes Word y PDF del mismo trabajo, **prefiere DOCX**: conserva información de estilos y tablas que un PDF puede haber perdido. Se usa un formato de página común y las fuentes disponibles en Texla; fuentes alternativas o motores de impresión distintos pueden cambiar los saltos y el número de páginas. El texto sigue siendo editable, no una fotografía de cada página.
 
 Los encabezados simples se recuperan al inicio en el editor y en la impresión del navegador. Al compilar la exportación LaTeX se repiten como encabezados. Los pies de página y encabezados complejos requieren revisión. Las notas al pie de Word se reúnen al final, y las listas importadas de Word conservan sus etiquetas como texto. Las tablas anidadas se simplifican. Las figuras importadas conservan su pie original como texto separado, sin añadir otro número automáticamente.

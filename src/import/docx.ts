@@ -117,7 +117,7 @@ export async function readDocx(bytes: Uint8Array, options: ImportOptions): Promi
     })+' ';
   }
   let figureCount=0,equations=0; const assets = new Map<string,Awaited<ReturnType<typeof prepareImage>>>();
-  async function image(el: Element, part: string, width: number): Promise<DocNode[]> {
+  async function image(el: Element, part: string, width: number, paragraphAlign?:string): Promise<DocNode[]> {
     const blip = Array.from(el.getElementsByTagName('*')).find(x=>x.localName==='blip');
     const id = blip?.getAttributeNS(R,'embed'); const relation=rels(part).get(id || '');
     if (!relation || relation.external || !files[relation.target]) { warnings.add('Una imagen enlazada o un dibujo no compatible necesita revisión manual.');return [{type:'paragraph',content:[{type:'text',text:'[Imagen no disponible]'}]}]; }
@@ -130,7 +130,21 @@ export async function readDocx(bytes: Uint8Array, options: ImportOptions): Promi
     }
     figureCount++;const extent=Array.from(el.getElementsByTagName('*')).find(x=>x.localName==='extent');const cx=Number(extent?.getAttribute('cx'))/12700;
     const docPr=Array.from(el.getElementsByTagName('*')).find(x=>x.localName==='docPr');
-    return [{type:'figure',attrs:{id:crypto.randomUUID(),asset:prepared.asset,caption:'',source:'',alt:(docPr?.getAttribute('descr')||'Imagen importada').slice(0,300),width:Math.max(1,Math.min(100,Math.round((cx||width)/width*100))),align:'center',captionMode:'none'}}];
+    let align=['left','center','right'].includes(paragraphAlign||'')?paragraphAlign!:'left';
+    const anchor=Array.from(el.getElementsByTagName('*')).find(x=>x.localName==='anchor');
+    const horizontal=one(anchor,'positionH'), explicit=one(horizontal,'align')?.textContent?.trim();
+    const relative=horizontal?.getAttribute('relativeFrom');
+    if(explicit&&['left','center','right'].includes(explicit))align=explicit;
+    else if(horizontal&&['margin','column','page'].includes(relative||'')){
+      const offset=one(horizontal,'posOffset')?.textContent?.trim();
+      if(offset&&Number.isFinite(Number(offset))){
+        const left=Number(offset)/12700-(relative==='page'?leftMargin:0);
+        const available=Math.max(0,width-Math.min(cx||width,width));
+        // The editable figure supports three alignments, not Word's absolute canvas.
+        align=([['left',0],['center',available/2],['right',available]] as const).reduce((best,point)=>Math.abs(left-point[1])<Math.abs(left-best[1])?point:best)[0];
+      }
+    }
+    return [{type:'figure',attrs:{id:crypto.randomUUID(),asset:prepared.asset,caption:'',source:'',alt:(docPr?.getAttribute('descr')||'Imagen importada').slice(0,300),width:Math.max(1,Math.min(100,Math.round((cx||width)/width*100))),align,captionMode:'none'}}];
   }
   function marks(s: RunStyle) {
     const result: NonNullable<DocNode['marks']> = [];
@@ -187,7 +201,7 @@ export async function readDocx(bytes: Uint8Array, options: ImportOptions): Promi
         const text=node.textContent||'';if(!text)return;const m=marks(inherited);if(link)m.push({type:'link',attrs:{href:link}});inline.push({type:'text',text,marks:m});
         if(inherited.font)fonts.set(inherited.font,(fonts.get(inherited.font)||0)+text.length);if(inherited.size)sizes.set(inherited.size,(sizes.get(inherited.size)||0)+text.length);return;
       }
-      if(node.localName==='drawing'||node.localName==='pict'){flush();result.push(...await image(node,part,width));return;}
+      if(node.localName==='drawing'||node.localName==='pict'){flush();result.push(...await image(node,part,width,ps.align));return;}
       if(node.localName==='br'){if(value(node,'type')==='page'){flush();result.push({type:'pageBreak'});}else inline.push({type:'hardBreak'});return;}
       if(node.localName==='tab'){inline.push({type:'text',text:'\u2003',marks:marks(inherited)});return;}
       if(node.localName==='noBreakHyphen'){inline.push({type:'text',text:'‑',marks:marks(inherited)});return;}
