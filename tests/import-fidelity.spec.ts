@@ -49,6 +49,43 @@ test('Word retains inherited typography, highlights, superscripts, merged tables
 
 });
 
+for(const [kind,header] of [
+ ['empty part',''],
+ ['empty paragraph','<w:p><w:pPr><w:pStyle w:val="Header"/></w:pPr></w:p>'],
+ ['whitespace','<w:p><w:r><w:t xml:space="preserve">   </w:t><w:tab/></w:r></w:p>'],
+])test(`Word with a blank header (${kind}) imports without creating an invalid header`,async({page})=>{
+ const files=unzipSync(word());
+ files['word/header1.xml']=strToU8(`<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">${header}</w:hdr>`);
+ await page.goto('/');await page.locator('.document-tools').getByRole('button',{name:'Importar documento',exact:true}).click();
+ await page.getByLabel('Archivo para importar').setInputFiles({name:'Encabezado vacío.docx',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',buffer:Buffer.from(zipSync(files))});
+ await page.getByRole('button',{name:'Convertir documento',exact:true}).click();
+ await expect(page.getByText('Conversión preparada',{exact:true})).toBeVisible();
+ await page.getByRole('button',{name:'Crear documento editable',exact:true}).click();
+ await expect(page.locator('.imported-header')).toHaveCount(0);
+ await expect(page.locator('.tiptap h1')).toContainText('Título con estilo heredado');
+ await expect(page.locator('.tiptap td[rowspan="2"]')).toContainText('Grupo A');
+ await expect(page.locator('.texla-figure img')).toHaveCount(1);
+ await page.waitForTimeout(600);await page.reload();
+ await page.getByRole('button',{name:'Encabezado vacío Guardado en este dispositivo',exact:true}).click();
+ await expect(page.locator('.imported-header')).toHaveCount(0);
+ await expect(page.locator('.tiptap th[colspan="2"]')).toContainText('Resultados');
+ await page.getByRole('button',{name:'LaTeX AUTO',exact:true}).click();
+ await expect(page.locator('.latex-panel pre')).toContainText('\\begin{longtable}');
+ await expect(page.locator('.latex-panel pre')).not.toContainText('\\fancyhead[L]');
+});
+
+test('Word header content inside tables or equations is not mistaken for a blank header',async({page})=>{
+ const files=unzipSync(word());
+ files['word/header1.xml']=strToU8('<w:hdr xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main" xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"><w:tbl><w:tr><w:tc><w:p><w:r><w:t>Encabezado en tabla</w:t></w:r></w:p></w:tc></w:tr></w:tbl><w:p><m:oMath><m:r><m:t>x=2</m:t></m:r></m:oMath></w:p></w:hdr>');
+ await page.goto('/');await page.locator('.document-tools').getByRole('button',{name:'Importar documento',exact:true}).click();
+ await page.getByLabel('Archivo para importar').setInputFiles({name:'Encabezado complejo.docx',mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document',buffer:Buffer.from(zipSync(files))});
+ await page.getByRole('button',{name:'Convertir documento',exact:true}).click();
+ await page.getByRole('button',{name:'Crear documento editable',exact:true}).click();
+ await expect(page.locator('.tiptap table')).toHaveCount(2);
+ await expect(page.locator('.tiptap table').first()).toContainText('Encabezado en tabla');
+ await expect(page.locator('.tiptap [data-type="inline-math"]')).toHaveAttribute('data-latex','x=2');
+});
+
 test('HTML typography and superscripts survive without accepting arbitrary font or CSS URLs',async({page})=>{
  const external:string[]=[];page.on('request',r=>{if(r.url().includes('evil.example'))external.push(r.url());});
  await page.goto('/');await page.locator('.document-tools').getByRole('button',{name:'Importar documento',exact:true}).click();

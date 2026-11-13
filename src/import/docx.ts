@@ -242,7 +242,11 @@ export async function readDocx(bytes: Uint8Array, options: ImportOptions): Promi
   for(const ref of all(sect,'headerReference').slice(0,1)){
     const relation=mainRelations.get(ref.getAttributeNS(R,'id')||'');if(relation&&!relation.external&&files[relation.target]){
       const header=await blocks(readXML(files[relation.target]).documentElement,relation.target,contentWidth);
-      const nonempty=header.filter(n=>n.type==='figure'||n.content?.some(c=>c.text?.trim()));
+      const hasContent=(n:DocNode):boolean=>['figure','inlineMath','blockMath'].includes(n.type)||!!n.text?.trim()||!!n.content?.some(hasContent);
+      const nonempty=header.filter(hasContent);
+      // Word permits blank headers (including a deliberately blank first page).
+      // The editor's importedHeader node requires at least one content block.
+      if(!nonempty.length)continue;
       if(nonempty.every(n=>n.type==='paragraph'||n.type==='figure')&&nonempty.length<=3){
         nonempty.sort((a,b)=>(a.type==='figure'?0:1)-(b.type==='figure'?0:1));
         content.push({type:'importedHeader',content:nonempty});
