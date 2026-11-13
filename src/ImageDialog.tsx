@@ -101,6 +101,7 @@ export default function ImageDialog({
         alt: alt.trim(),
         width,
         align,
+        placement:initial?.width===width&&initial?.align===align?initial?.placement:null,
         ...(initial?.captionMode === 'none' && !caption.trim() && !source.trim() ? {captionMode:'none' as const} : {}),
       });
     } catch (error) {

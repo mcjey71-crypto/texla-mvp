@@ -11,6 +11,11 @@ export type ImageAsset = {
   size: number;
   remote?: { path: string; key: string; iv: string };
 };
+export type ImagePlacement={left:number;top:number;width:number};
+export function validImagePlacement(value:unknown):value is ImagePlacement{
+ const a=value as ImagePlacement;
+ return !!a&&[a.left,a.top,a.width].every(n=>typeof n==='number'&&Number.isFinite(n))&&a.left>=0&&a.left<=100&&a.top>=0&&a.top<=2000&&a.width>0&&a.width<=100&&a.left+a.width<=100.01;
+}
 export type FigureAttributes = {
   id: string;
   asset: ImageAsset;
@@ -20,6 +25,7 @@ export type FigureAttributes = {
   width: number;
   align: "left" | "center" | "right";
   captionMode?: 'none';
+  placement?: ImagePlacement | null;
 };
 const uuid = /^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/i;
 export function validImageAsset(value: unknown): value is ImageAsset {
@@ -62,6 +68,7 @@ export function validFigure(value: unknown): value is FigureAttributes {
     a.width >= 1 &&
     a.width <= 100 &&
     ["left", "center", "right"].includes(a.align) &&
+    (a.placement == null || validImagePlacement(a.placement)) &&
     (a.captionMode === undefined || a.captionMode === 'none')
   );
 }

@@ -1,3 +1,4 @@
+import {sectionLayout} from './documentSections';
 import {validFigure,imageFilename} from './imageTypes';
 import { resolveFormat, type DocumentFormat } from './formalDocument';
 import { tableToLatex } from './tableLatex';
@@ -38,7 +39,7 @@ function importedParagraph(inner:string,node:DocNode,format:DocumentFormat){
  const a=blockAppearance(node.attrs?.layout);const align=({left:'\\raggedright',right:'\\raggedleft',center:'\\centering'} as Record<string,string>)[node.attrs?.textAlign||format.paragraphAlignment]||'';
  return `\\begingroup\n${align}\n\\setlength{\\parskip}{0pt}\n\\setlength{\\parindent}{${a.indent||0}pt}\n${a.left?`\\setlength{\\leftskip}{${a.left}pt}\n`:''}${a.right?`\\setlength{\\rightskip}{${a.right}pt}\n`:''}${a.line?`\\setstretch{${a.line}}\n`:''}${a.before?`\\vspace{${a.before}pt}\n`:''}${inner}\\par\n${a.after?`\\vspace{${a.after}pt}\n`:''}\\endgroup\n`;
 }
-export function nodeToLatex(node: DocNode, citationNumbers: Map<string, number> = new Map(), citationLabels?: Map<string, string>, format = resolveFormat(), bibliographyContent = ''): string {
+export function nodeToLatex(node: DocNode, citationNumbers: Map<string, number> = new Map(), citationLabels?: Map<string, string>, format = resolveFormat(), bibliographyContent = '', inColumns=false): string {
   if(['importedHeader','commentThread','commentMessage'].includes(node.type))return '';
   if (node.type === 'text') {
     const isURL = node.marks?.some(mark => mark.type === 'link' && /^https?:\/\//i.test(mark.attrs?.href || '') && node.text === mark.attrs?.href);
@@ -60,11 +61,22 @@ export function nodeToLatex(node: DocNode, citationNumbers: Map<string, number> 
   }
   if (node.type === 'blockMath') return `\n\\begin{equation}\n${node.attrs?.latex || ''}\n\\end{equation}\n`;
   if (node.type === 'bibliographyAnchor') return bibliographyContent || `\\section*{Referencias bibliográficas}\n\\phantomsection\n\\addcontentsline{toc}{section}{Referencias bibliográficas}\n${format.bibliographyGroups ? '\\subsection*{Referencias primarias}\n\\subsection*{Referencias complementarias}\n' : ''}`;
-  if (node.type === 'figure' && validFigure(node.attrs)) {const figure=node.attrs;const graphic=`\\includegraphics[width=${(figure.width/100).toFixed(2)}\\linewidth,height=0.75\\textheight,keepaspectratio]{${imageFilename(figure.asset)}}`;if(figure.captionMode==='none')return `\n\\begingroup${figure.align==='left'?'\\raggedright':figure.align==='right'?'\\raggedleft':'\\centering'}\n${graphic}\\par\\endgroup\n`;return `\n\\begin{figure}[htbp]\n${figure.align==='left'?'\\raggedright':figure.align==='right'?'\\raggedleft':'\\centering'}\n${graphic}\n\\caption{${escapeTex(figure.caption)}}\n${figure.source?`{\\small ${escapeTex('Fuente: '+figure.source)}\\par}\n`:''}\\end{figure}\n`; }
-  if (node.type === 'table') return tableToLatex(node, child => nodeToLatex(child, citationNumbers, citationLabels, format, bibliographyContent));
+  if (node.type === 'figure' && validFigure(node.attrs)) {const figure=node.attrs;const graphic=`\\includegraphics[width=${(figure.width/100).toFixed(2)}\\linewidth,height=0.75\\textheight,keepaspectratio]{${imageFilename(figure.asset)}}`;if(figure.captionMode==='none')return `\n\\begingroup${figure.align==='left'?'\\raggedright':figure.align==='right'?'\\raggedleft':'\\centering'}\n${graphic}\\par\\endgroup\n`;return `\n${inColumns?'\\par\\noindent\\begin{minipage}{\\linewidth}':'\\begin{figure}[htbp]'}\n${figure.align==='left'?'\\raggedright':figure.align==='right'?'\\raggedleft':'\\centering'}\n${graphic}\n${inColumns?'\\captionof{figure}':'\\caption'}{${escapeTex(figure.caption)}}\n${figure.source?`{\\small ${escapeTex('Fuente: '+figure.source)}\\par}\n`:''}${inColumns?'\\end{minipage}\\par':'\\end{figure}'}\n`; }
+  if (node.type === 'table') return tableToLatex(node, child => nodeToLatex(child, citationNumbers, citationLabels, format, bibliographyContent,inColumns),!inColumns);
+  if(node.type==='documentSection'){
+    const a=sectionLayout(node.attrs);
+    const positioned=(node.content||[]).filter(n=>n.type==='figure'&&validFigure(n.attrs)&&n.attrs.placement);
+    const overlays=positioned.map(n=>{
+      const f=n.attrs!,p=f.placement;
+      return `\\AddToShipoutPictureFG*{\\AtTextUpperLeft{\\put(\\LenToUnit{${(p.left/100).toFixed(6)}\\textwidth},-\\LenToUnit{${p.top}pt}){\\makebox(0,0)[lt]{\\includegraphics[width=${(p.width/100).toFixed(6)}\\textwidth]{${imageFilename(f.asset)}}}}}}\n`;
+    }).join('');
+    const body=(node.content||[]).filter(n=>!positioned.includes(n)).map(n=>nodeToLatex(n,citationNumbers,citationLabels,format,bibliographyContent,a.columns>1)).join('');
+    return `\n${a.breakBefore?'\\clearpage\n':''}${overlays}${a.columns>1?`\\begingroup\n\\setlength{\\columnsep}{${a.gap}pt}\n\\setlength{\\multicolsep}{0pt}\n\\begin{multicols}{${a.columns}}\n${body}\\end{multicols}\n\\endgroup\n`:body}`;
+  }
+  if(node.type==='columnBreak')return inColumns?'\\columnbreak\n':'\n';
   if (node.type === 'tableOfContents') return '\\tableofcontents\n';
   if (node.type === 'pageBreak') return format.pageSize === 'Continuo' ? '\n' : '\\clearpage\n';
-  const inner = (node.content || []).map(child => nodeToLatex(child, citationNumbers, citationLabels, format, bibliographyContent)).join('');
+  const inner = (node.content || []).map(child => nodeToLatex(child, citationNumbers, citationLabels, format, bibliographyContent,inColumns)).join('');
   switch (node.type) {
     case 'heading': {
       if(node.attrs?.layout)return importedParagraph(inner,node,format);
@@ -107,6 +119,8 @@ export function exportLatex(title: string, content: DocNode, library: Reference[
   const structure = format.headingStyle === 'cv' ? `\\usepackage{titlesec}\n\\titleformat{\\section}{\\bfseries\\normalsize}{}{0pt}{}[\\titlerule]\n\\titlespacing*{\\section}{0pt}{8pt}{4pt}\n\\let\\cvitemize\\itemize\n\\let\\endcvitemize\\enditemize\n\\renewenvironment{itemize}{\\cvitemize\\setlength{\\itemsep}{0pt}\\setlength{\\parsep}{0pt}\\setlength{\\topsep}{0pt}}{\\endcvitemize}\n` : format.headingStyle !== 'editorial' ? `\\usepackage{titlesec}\n\\titleformat{\\section}${format.sectionStyle === 'chapters' ? '[display]' : ''}{\\centering\\bfseries${format.headingStyle === 'apa' ? '\\normalsize' : '\\fontsize{16}{20}\\selectfont'}}{${format.sectionStyle === 'chapters' ? 'CAPÍTULO \\Roman{section}' : '\\thesection'}}{0.5em}{}\n\\titleformat{\\subsection}{\\bfseries\\normalsize}{\\thesubsection}{0.5em}{}\n\\titleformat{\\subsubsection}{\\bfseries\\normalsize}{\\thesubsubsection}{0.5em}{}\n` : '';
   const hasAppearance = (node:DocNode):boolean => !!node.marks?.some(m=>m.type==='textAppearance') || !!node.attrs?.layout || !!node.content?.some(hasAppearance);
   const importedStyles = hasAppearance(content) ? `\\usepackage[table]{xcolor}\n${FONTS.map((f,i)=>`\\newcommand{\\texlafont${String.fromCharCode(97+i)}}{\\ifPDFTeX${f.pdfPackage==='helvet'?'\\sffamily':'\\rmfamily'}\\else\\IfFontExistsTF{${f.id}}{\\fontspec{${f.id}}}{\\IfFontExistsTF{${f.latexFallback}}{\\fontspec{${f.latexFallback}}}{}}\\fi}\n`).join('')}` : '';
+  const hasSections=(n:DocNode):boolean=>n.type==='documentSection'||!!n.content?.some(hasSections);
+  const sectionPackages=hasSections(content)?'\\usepackage{multicol,eso-pic,capt-of}\n':'';
   const header=format.headerMode==='auto'?content.content?.find(n=>n.type==='importedHeader'):undefined;
   const headerImage=header?.content?.find(n=>n.type==='figure'&&validFigure(n.attrs));
   const headerText=header?.content?.filter(n=>n.type!=='figure').map(n=>nodeToLatex(n,numbers,formatted.citations,format)).join('')||'';
@@ -118,7 +132,7 @@ export function exportLatex(title: string, content: DocNode, library: Reference[
   const pageNumbers=`\\usepackage{fancyhdr}\n\\setlength{\\headheight}{${header||headerSetup?'40':'15'}pt}\n\\fancypagestyle{texla}{${baseFurniture}${numberSetup}}\n\\fancypagestyle{texlafirst}{${baseFurniture}}\n\\pagestyle{texla}\n\\pagenumbering{${format.pageNumberStyle}}\n`;
   // Spanish Babel renders \roman as small capitals; preserve an explicit lowercase choice.
   const initialPage=`${format.pageNumberStyle==='roman'?'\\renewcommand{\\thepage}{\\romannumeral\\value{page}}\n':''}\\setcounter{page}{${format.pageNumberStart}}\n${format.numberFirstPage?'':'\\thispagestyle{texlafirst}\n'}`;
-  return `\\documentclass[${format.fontSize}pt,${paper.classOption}]{article}\n${fontLatex(format.fontFamily)}${importedStyles}\\usepackage[spanish]{babel}\n\\usepackage{amsmath,amssymb}\n\\usepackage{graphicx}\n\\usepackage{xurl}\n\\urlstyle{same}\n\\usepackage{setspace}\n\\usepackage{longtable,array,booktabs,multirow}\n\\usepackage[${paper.geometry},margin=${format.margin}cm]{geometry}\n\\setstretch{${format.lineSpacing}}\n\\setlength{\\parindent}{${format.firstLineIndent}cm}\n\\setlength{\\parskip}{${format.paragraphSpacing}pt}\n${format.firstLineIndent ? '\\usepackage{indentfirst}\n' : ''}${structure}${pageNumbers}\\usepackage[hidelinks]{hyperref}\n\\setlength{\\emergencystretch}{2em}\n\\title{${escapeTex(title)}}\n\\date{}\n\\begin{document}\n${initialPage}${nodeToLatex(content, numbers, formatted.citations, format, bibliography)}${anchored(content) ? '' : bibliography}\n\\end{document}\n`;
+  return `\\documentclass[${format.fontSize}pt,${paper.classOption}]{article}\n${fontLatex(format.fontFamily)}${importedStyles}${sectionPackages}\\usepackage[spanish]{babel}\n\\usepackage{amsmath,amssymb}\n\\usepackage{graphicx}\n\\usepackage{xurl}\n\\urlstyle{same}\n\\usepackage{setspace}\n\\usepackage{longtable,array,booktabs,multirow}\n\\usepackage[${paper.geometry},margin=${format.margin}cm]{geometry}\n\\setstretch{${format.lineSpacing}}\n\\setlength{\\parindent}{${format.firstLineIndent}cm}\n\\setlength{\\parskip}{${format.paragraphSpacing}pt}\n${format.firstLineIndent ? '\\usepackage{indentfirst}\n' : ''}${structure}${pageNumbers}\\usepackage[hidelinks]{hyperref}\n\\setlength{\\emergencystretch}{2em}\n\\title{${escapeTex(title)}}\n\\date{}\n\\begin{document}\n${initialPage}${nodeToLatex(content, numbers, formatted.citations, format, bibliography)}${anchored(content) ? '' : bibliography}\n\\end{document}\n`;
 }
 export const initialContent: DocNode = { type: 'doc', content: [
  { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'El lenguaje del universo' }] },

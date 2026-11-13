@@ -1,7 +1,7 @@
 import type { DocNode } from './document';
 import {blockAppearance} from './richFormatting';
 /** Export rectangular and merged cells without losing their grid positions. */
-export function tableToLatex(table: DocNode, render: (node: DocNode) => string): string {
+export function tableToLatex(table: DocNode, render: (node: DocNode) => string, multipage=true): string {
   type Cell = { node?: DocNode; cols: number; rows: number };
   const grid: (Cell | null)[][] = [];
   const rows = table.content || [];
@@ -43,7 +43,8 @@ export function tableToLatex(table: DocNode, render: (node: DocNode) => string):
   });
   const changesCounters = (node: DocNode): boolean => ['blockMath','heading'].includes(node.type) || (node.content || []).some(changesCounters);
   const hasHeader = !rows[0]?.content?.some(changesCounters) && rows[0]?.content?.length && rows[0].content.every(c=>c.type==='tableHeader' && (!c.attrs?.rowspan || c.attrs.rowspan===1));
-  const body = hasHeader ? [lines[0], '\\endfirsthead', lines[0], '\\endhead', ...lines.slice(1)].join('\n') : lines.join('\n');
+  const body = hasHeader && multipage ? [lines[0], '\\endfirsthead', lines[0], '\\endhead', ...lines.slice(1)].join('\n') : lines.join('\n');
   const spec=custom?weights.map((_,i)=>`>{\\raggedright\\arraybackslash}p{${width(1,i)}}`).join(''):`*{${columns}}{>{\\raggedright\\arraybackslash}p{${width()}}}`;
-  return `\n\\begin{longtable}{${spec}}\n\\toprule\n${body}\n\\bottomrule\n\\end{longtable}\n`;
+  const environment=multipage?'longtable':'tabular';
+  return `\n${multipage?'':'\\par\\noindent'}\\begin{${environment}}{${spec}}\n\\toprule\n${body}\n\\bottomrule\n\\end{${environment}}${multipage?'':'\\par'}\n`;
 }

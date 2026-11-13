@@ -278,3 +278,13 @@
 @media screen and (max-width:760px){.focus-mode .canvas{padding:10px 10px 28px 52px}.focus-mode.has-voice-dock .canvas{padding-left:68px}.walkie-panel.walkie-dock{bottom:42px}.focus-mode .walkie-dock{bottom:14px}.focus-exit{left:10px;top:10px}.walkie-dock.walkie-expanded .walkie-heading{display:flex;flex-direction:column;align-items:flex-start}.walkie-dock.walkie-expanded .walkie-heading strong{font-size:22px}}
 /* Cell formulas use the table's text size, without KaTeX's prose enlargement. */
 .tiptap table [data-type="inline-math"]>.katex{font-size:1em}
+
+/* Word sections retain their own column flow; positioned artwork is scoped to its section. */
+.tiptap .document-section{position:relative;column-fill:balance;min-width:0;clear:both}
+.tiptap .document-section>p:first-child,.tiptap .document-section>h1:first-child,.tiptap .document-section>h2:first-child{margin-top:0}
+.tiptap .column-break{break-before:column;height:0;overflow:hidden}
+.tiptap .document-section .tableWrapper,.tiptap .document-section .node-figure{break-inside:avoid}
+.tiptap .texla-figure[data-positioned]{z-index:2;margin:0;break-inside:avoid}
+.texla-figure[data-positioned] .figure-actions{position:absolute;top:100%;right:0;min-width:120px;background:#fffefa;opacity:0;pointer-events:none}
+.texla-figure[data-positioned]:hover .figure-actions,.texla-figure[data-positioned]:focus-within .figure-actions,.texla-figure[data-positioned].figure-selected .figure-actions{opacity:1;pointer-events:auto}
+@media print{.tiptap .document-section{column-fill:balance}.tiptap .texla-figure[data-positioned] .figure-actions{display:none!important}}

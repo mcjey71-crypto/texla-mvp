@@ -3,7 +3,7 @@ import { resolveFormat, type DocumentFormat } from '../formalDocument';
 import { FONTS, type DocumentFont } from '../fonts';
 import { PAGE_FORMATS } from '../pageFormats';
 import { prepareImage, cacheImage } from '../imageAssets';
-import { MAX_FIGURES } from '../imageTypes';
+import { MAX_FIGURES, validImagePlacement, type ImagePlacement } from '../imageTypes';
 import { textAppearance, blockAppearance, type TextAppearance, type BlockAppearance } from '../richFormatting';
 import { readArchive, readXML } from './archive';
 import { wordMath } from './wordMath';
@@ -88,7 +88,7 @@ export async function readDocx(bytes: Uint8Array, options: ImportOptions): Promi
   const margins = one(sect,'pgMar'); const leftMargin = (num(value(margins,'left')) || 1440) / 20; const rightMargin = (num(value(margins,'right')) || 1440) / 20;
   const contentWidth = Math.max(72, pageWidth-leftMargin-rightMargin);
   const pageSize = [...PAGE_FORMATS].filter(p=>p.id!=='Continuo').sort((a,b)=>Math.abs(a.width*72/25.4-pageWidth)+Math.abs(a.height*72/25.4-pageHeight)-Math.abs(b.width*72/25.4-pageWidth)-Math.abs(b.height*72/25.4-pageHeight))[0].id;
-  if (xml.getElementsByTagNameNS(W,'sectPr').length > 1) warnings.add('El documento contiene varias secciones. Se usa un formato de página común; revisa sus cambios de orientación y márgenes.');
+  if (xml.getElementsByTagNameNS(W,'sectPr').length > 1) warnings.add('Se conservaron las secciones y sus columnas. Se usa un formato de página común; revisa los cambios de orientación y márgenes.');
   const rels = (part: string) => {
     const slash = part.lastIndexOf('/'); const key = part.slice(0,slash+1)+'_rels/'+part.slice(slash+1)+'.rels';
     const map = new Map<string,{target:string;external:boolean}>();
@@ -116,6 +116,7 @@ export async function readDocx(bytes: Uint8Array, options: ImportOptions): Promi
       return f==='upperRoman'?roman(count):f==='lowerRoman'?roman(count).toLowerCase():f==='lowerLetter'||f==='upperLetter'?String.fromCharCode((f==='lowerLetter'?97:65)+(count-1)%26):String(count);
     })+' ';
   }
+  let activeSection:{width:number;left:number;top:number;pageWidth:number;pageHeight:number;columns:number;pageStart:boolean;atStart:boolean}|undefined;
   let figureCount=0,equations=0; const assets = new Map<string,Awaited<ReturnType<typeof prepareImage>>>();
   async function image(el: Element, part: string, width: number, paragraphAlign?:string): Promise<DocNode[]> {
     const blip = Array.from(el.getElementsByTagName('*')).find(x=>x.localName==='blip');
@@ -140,11 +141,24 @@ export async function readDocx(bytes: Uint8Array, options: ImportOptions): Promi
       if(offset&&Number.isFinite(Number(offset))){
         const left=Number(offset)/12700-(relative==='page'?leftMargin:0);
         const available=Math.max(0,width-Math.min(cx||width,width));
-        // The editable figure supports three alignments, not Word's absolute canvas.
+        // Fallback alignment for anchors whose full position cannot be recovered.
         align=([['left',0],['center',available/2],['right',available]] as const).reduce((best,point)=>Math.abs(left-point[1])<Math.abs(left-best[1])?point:best)[0];
       }
     }
-    return [{type:'figure',attrs:{id:crypto.randomUUID(),asset:prepared.asset,caption:'',source:'',alt:(docPr?.getAttribute('descr')||'Imagen importada').slice(0,300),width:Math.max(1,Math.min(100,Math.round((cx||width)/width*100))),align,captionMode:'none'}}];
+    let placement:ImagePlacement|undefined;
+    if(anchor&&activeSection){
+      const vertical=one(anchor,'positionV'),vRelative=vertical?.getAttribute('relativeFrom');
+      const yText=one(vertical,'posOffset')?.textContent?.trim();
+      const xText=one(horizontal,'posOffset')?.textContent?.trim();
+      if(activeSection.pageStart&&activeSection.atStart&&activeSection.columns===1&&one(anchor,'wrapNone')&&['margin','page','column'].includes(relative||'')&&['margin','page'].includes(vRelative||'')&&yText!==undefined&&yText!==''&&Number.isFinite(Number(yText))){
+        const regionWidth=relative==='page'?activeSection.pageWidth:activeSection.width;
+        const x=xText!==undefined&&xText!==''&&Number.isFinite(Number(xText))?Number(xText)/12700:explicit==='right'?regionWidth-cx:explicit==='center'?(regionWidth-cx)/2:explicit==='left'?0:NaN;
+        const proposed={left:(x-(relative==='page'?activeSection.left:0))/activeSection.width*100,top:Number(yText)/12700-(vRelative==='page'?activeSection.top:0),width:cx/activeSection.width*100};
+        if(validImagePlacement(proposed)&&proposed.top<activeSection.pageHeight)placement=proposed;
+      }
+      if(!placement&&one(anchor,'positionV'))warnings.add('Una imagen flotante usa un anclaje o ajuste de texto no compatible y se recuperó en el flujo del texto. Revisa su posición.');
+    }
+    return [{type:'figure',attrs:{id:crypto.randomUUID(),asset:prepared.asset,caption:'',source:'',alt:(docPr?.getAttribute('descr')||'Imagen importada').slice(0,300),width:Math.max(1,Math.min(100,Math.round((cx||width)/width*100))),align,captionMode:'none',...(placement?{placement}:{})}}];
   }
   function marks(s: RunStyle) {
     const result: NonNullable<DocNode['marks']> = [];
@@ -202,7 +216,7 @@ export async function readDocx(bytes: Uint8Array, options: ImportOptions): Promi
         if(inherited.font)fonts.set(inherited.font,(fonts.get(inherited.font)||0)+text.length);if(inherited.size)sizes.set(inherited.size,(sizes.get(inherited.size)||0)+text.length);return;
       }
       if(node.localName==='drawing'||node.localName==='pict'){flush();result.push(...await image(node,part,width,ps.align));return;}
-      if(node.localName==='br'){if(value(node,'type')==='page'){flush();result.push({type:'pageBreak'});}else inline.push({type:'hardBreak'});return;}
+      if(node.localName==='br'){if(['page','column'].includes(value(node,'type')||'')){flush();result.push({type:value(node,'type')==='column'?'columnBreak':'pageBreak'});}else inline.push({type:'hardBreak'});return;}
       if(node.localName==='tab'){inline.push({type:'text',text:'\u2003',marks:marks(inherited)});return;}
       if(node.localName==='noBreakHyphen'){inline.push({type:'text',text:'‑',marks:marks(inherited)});return;}
       if(['del','instrText','pPr','rPr','lastRenderedPageBreak','sectPr'].includes(node.localName))return;
@@ -242,7 +256,8 @@ export async function readDocx(bytes: Uint8Array, options: ImportOptions): Promi
   }
   async function blocks(parent:Element,part:string,width:number,depth=0,inTable=false):Promise<DocNode[]>{
     if(depth>20)throw new Error('El documento tiene demasiados niveles de tablas.');const out:DocNode[]=[];
-    for(const el of Array.from(parent.children)){
+    for(const [blockIndex,el] of Array.from(parent.children).entries()){
+      if(activeSection&&parent.localName==='body')activeSection.atStart=blockIndex<2;
       if(el.localName==='p')out.push(...await paragraph(el,part,width,inTable));
       else if(el.localName==='tbl'){
         if(depth>0){warnings.add('Una tabla anidada se convirtió en una tabla independiente. Revisa su posición.');out.push(...await blocks(el,part,width,depth+1,inTable));}
@@ -267,7 +282,34 @@ export async function readDocx(bytes: Uint8Array, options: ImportOptions): Promi
       }else{content.push(...header);warnings.add('El encabezado complejo se recuperó al inicio. Revisa su posición.');}
     }
   }
-  content.push(...await blocks(xml.getElementsByTagNameNS(W,'body')[0], 'word/document.xml',contentWidth));
+  // A paragraph's sectPr describes the section that ENDS there, not the following one.
+  const body=xml.getElementsByTagNameNS(W,'body')[0];
+  const sections:{elements:Element[];properties:Element|undefined}[]=[];let pending:Element[]=[];
+  for(const element of Array.from(body.children)){
+    if(element.localName==='sectPr'){sections.push({elements:pending,properties:element});pending=[];}
+    else{pending.push(element);const properties=one(one(element,'pPr'),'sectPr');if(properties){sections.push({elements:pending,properties});pending=[];}}
+  }
+  if(pending.length)sections.push({elements:pending,properties:undefined});
+  for(const [index,section] of sections.entries()){
+    const properties=section.properties,cols=one(properties,'cols');
+    const count=Math.max(1,Math.min(4,num(value(cols,'num'))||all(cols,'col').length||1));
+    const gap=Math.max(0,Math.min(144,(num(value(cols,'space'))??360)/20));
+    if(all(cols,'col').length&&new Set(all(cols,'col').map(c=>value(c,'w'))).size>1)warnings.add('Una sección con columnas desiguales se recuperó con columnas del mismo ancho.');
+    if((num(value(cols,'num'))||1)>4)warnings.add('Una sección con más de cuatro columnas se recuperó con cuatro columnas.');
+    const sectionMargins=one(properties,'pgMar');
+    const left=(num(value(sectionMargins,'left'))??leftMargin*20)/20,right=(num(value(sectionMargins,'right'))??rightMargin*20)/20;
+    const top=(num(value(sectionMargins,'top'))??1440)/20;
+    const sectionWidth=(num(value(one(properties,'pgSz'),'w'))??pageWidth*20)/20-left-right;
+    const breakBefore=index>0&&value(one(properties,'type'))!=='continuous';
+    activeSection={width:Math.max(72,sectionWidth),left,top,pageWidth:sectionWidth+left+right,pageHeight:(num(value(one(properties,'pgSz'),'h'))??pageHeight*20)/20,columns:count,pageStart:index===0||breakBefore,atStart:true};
+    const container=xml.createElementNS(W,'body');section.elements.forEach(el=>container.appendChild(el.cloneNode(true)));
+    const nodes=await blocks(container,'word/document.xml',Math.max(36,(activeSection.width-(count-1)*gap)/count));
+    if(!nodes.length)continue;
+    const positioned=nodes.some(n=>n.type==='figure'&&n.attrs?.placement);
+    if(sections.length>1||count>1||positioned)content.push({type:'documentSection',attrs:{columns:count,gap,breakBefore},content:nodes});
+    else content.push(...nodes);
+  }
+  activeSection=undefined;
   for(const part of ['word/footnotes.xml','word/endnotes.xml'])if(files[part]){
     const notes=Array.from(readXML(files[part]).documentElement.children).filter(n=>Number(value(n,'id'))>0);
     if(notes.length){warnings.add('Las notas al pie se recuperaron al final. Revisa su numeración y posición.');content.push({type:'heading',attrs:{level:2,numbered:false},content:[{type:'text',text:'Notas'}]});for(const note of notes){content.push({type:'paragraph',content:[{type:'text',text:`[${value(note,'id')}]`}]},...await blocks(note,part,contentWidth));}}

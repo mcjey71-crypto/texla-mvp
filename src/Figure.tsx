@@ -76,11 +76,13 @@ function FigureView({
       className={`texla-figure ${selected ? "figure-selected" : ""}`}
       data-figure-number={number}
       data-figure-id={figure.id}
+      data-positioned={figure.placement ? "true" : undefined}
       contentEditable={false}
       style={{
-        width: `${figure.width}%`,
-        marginLeft: figure.align === "left" ? 0 : "auto",
-        marginRight: figure.align === "right" ? 0 : "auto",
+        width: `${figure.placement?.width ?? figure.width}%`,
+        ...(figure.placement ? {position:"absolute" as const,left:`${figure.placement.left}%`,top:`${figure.placement.top}pt`,margin:0} : {}),
+        marginLeft: figure.placement || figure.align === "left" ? 0 : "auto",
+        marginRight: figure.placement || figure.align === "right" ? 0 : "auto",
       }}
     >
       {url ? (
@@ -161,6 +163,7 @@ export const Figure = Node.create<{
       width: { default: 100 },
       align: { default: "center" },
       captionMode: { default: undefined },
+      placement: { default: null },
     };
   },
   parseHTML() {

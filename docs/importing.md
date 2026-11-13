@@ -18,7 +18,9 @@ Las referencias de otros formatos se conservan como texto, cuando están present
 
 ## Fidelidad del diseño
 
-Las imágenes de Word en línea respetan la alineación de su párrafo, incluidos los estilos heredados. En las imágenes flotantes tiene prioridad el anclaje horizontal de la imagen: los desplazamientos respecto a la página, los márgenes o la columna se adaptan a izquierda, centro o derecha. Esto conserva la alineación, pero no reproduce las coordenadas absolutas, la altura ni el ajuste de texto alrededor de una imagen flotante de Word. Revisa esos detalles después de importar.
+Las secciones de Word conservan sus cambios entre una y varias columnas (hasta cuatro columnas iguales), el espacio entre columnas y los saltos de columna explícitos. El contenido sigue siendo editable y mantiene esa estructura al guardar, compartir, imprimir y exportar a LaTeX. Las secciones de una columna permiten que títulos, resúmenes, tablas y gráficos ocupen todo el ancho entre tramos de dos columnas. Las columnas desiguales se aproximan a columnas iguales, con un aviso.
+
+Las imágenes en línea respetan la alineación de su párrafo. Las imágenes flotantes sin ajuste de texto, ancladas a los márgenes o a la página al inicio de una sección que empieza una página, conservan su desplazamiento horizontal, vertical y ancho relativo. Esto permite mantener un logo junto al texto institucional sin crear una fila vacía debajo. Los anclajes dentro de páginas intermedias, las imágenes fuera de los márgenes y otros ajustes de texto todavía requieren revisión y generan un aviso. Cambiar manualmente el ancho o la alineación desde Editar imagen devuelve la imagen al flujo normal; editar su descripción conserva su ubicación.
 
 Si tienes Word y PDF del mismo trabajo, **prefiere DOCX**: conserva información de estilos y tablas que un PDF puede haber perdido. Se usa un formato de página común y las fuentes disponibles en Texla; fuentes alternativas o motores de impresión distintos pueden cambiar los saltos y el número de páginas. El texto sigue siendo editable, no una fotografía de cada página.
 
@@ -52,3 +54,5 @@ Los PDF protegidos con contraseña deben desbloquearse antes de importarlos. En 
 Las pruebas de navegador cubren documentos Word con ecuaciones, PDF seleccionable/escaneado/protegido, ODT, Markdown, HTML no confiable, texto y LaTeX; verifican edición y descarga `.tex`. Los ejemplos pequeños están en `tests/fixtures/import/`. Para regenerarlos se puede ejecutar `scripts/create-import-fixtures.py` con Python, python-docx, reportlab y Pillow; no es necesario para ejecutar las pruebas.
 
 `tests/import-fidelity.spec.ts` añade regresiones para estilos heredados, resaltados, superíndices, tablas combinadas, imágenes, encabezados, persistencia y exportación ZIP. El PDF estructurado de dos páginas se regenera con `scripts/create-tagged-pdf-fixture.py` (pypdf); verifica que una tabla se reúna sin perder celdas. Todos los archivos de prueba son sintéticos.
+
+`tests/docx-sections.spec.ts` comprueba secciones mixtas, posiciones de logos, edición, impresión, reapertura, copias editables y exportación LaTeX. Los archivos aportados por usuarios se prueban localmente y no forman parte de los fixtures del repositorio.

@@ -1,3 +1,4 @@
+import {sectionLayout} from './documentSections';
 import {validFigure,figures,MAX_FIGURES} from './imageTypes';
 import {textAppearance,blockAppearance} from './richFormatting';
 import type { DocNode } from './document';
@@ -20,6 +21,7 @@ export function readBackup(raw: string): Omit<SavedDocument,'id'|'updated'> {
   function check(node:DocNode,depth:number) {
     if(!node||typeof node.type!=='string'||depth>30||++count>50000)throw new Error('La estructura del documento no es válida.');
     if(node.attrs?.textAlign != null && !['left','center','right','justify'].includes(node.attrs.textAlign))throw new Error('La copia contiene una alineación no válida.');
+    if(node.type==='documentSection')node.attrs=sectionLayout(node.attrs);
     if(node.attrs?.layout)node.attrs.layout=blockAppearance(node.attrs.layout);
     if(node.type==='commentThread') {
       if(typeof node.attrs?.id!=='string'||node.attrs.id.length>100||typeof node.attrs.quote!=='string'||node.attrs.quote.length>500||typeof node.attrs.resolved!=='boolean'||!node.content?.length||node.content.some(child=>child.type!=='commentMessage'))throw new Error('La copia contiene un comentario no válido.');
