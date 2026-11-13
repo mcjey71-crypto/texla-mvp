@@ -13,6 +13,14 @@ describe('AI math paste', () => {
  });
 });
 describe('LaTeX export', () => {
+ it('exports imported cell math at its text size and supports adjacent Word zero-width spaces', () => {
+  const out=nodeToLatex({type:'paragraph',content:[
+   {type:'inlineMath',attrs:{latex:'3.5\\times 10^{-44}'},marks:[{type:'textAppearance',attrs:{appearance:{size:10}}}]},
+   {type:'text',text:'\u200b'},
+  ]});
+  expect(out).toContain('{\\fontsize{10}{12}\\selectfont $3.5\\times 10^{-44}$}\\hspace{0pt}');
+  expect(out).not.toContain('\u200b');
+ });
  it('keeps long imported DOI links breakable regardless of formatting mark order', () => {
   const url='https://doi.org/10.1371/journal.pcbi.1011630';
   for(const marks of [[{type:'link',attrs:{href:url}},{type:'underline'}],[{type:'underline'},{type:'link',attrs:{href:url}}]]){

@@ -276,3 +276,5 @@
 @media screen and (max-width:1250px){.app-shell{--voice-dock-left:227px}}
 @media screen and (max-width:760px){.app-shell{--voice-dock-left:12px}.has-voice-dock .canvas{padding-left:68px}}
 @media screen and (max-width:760px){.focus-mode .canvas{padding:10px 10px 28px 52px}.focus-mode.has-voice-dock .canvas{padding-left:68px}.walkie-panel.walkie-dock{bottom:42px}.focus-mode .walkie-dock{bottom:14px}.focus-exit{left:10px;top:10px}.walkie-dock.walkie-expanded .walkie-heading{display:flex;flex-direction:column;align-items:flex-start}.walkie-dock.walkie-expanded .walkie-heading strong{font-size:22px}}
+/* Cell formulas use the table's text size, without KaTeX's prose enlargement. */
+.tiptap table [data-type="inline-math"]>.katex{font-size:1em}

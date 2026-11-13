@@ -138,7 +138,32 @@ export async function readDocx(bytes: Uint8Array, options: ImportOptions): Promi
     const appearance=textAppearance(s);if(Object.keys(appearance).length)result.push({type:'textAppearance',attrs:{appearance}});
     return result;
   }
-  async function paragraph(el: Element, part: string, width: number): Promise<DocNode[]> {
+  // Bibliography text is often directly formatted, while Word hyperlinks retain an
+  // unrelated character style. Use the surrounding reference's typography only here.
+  function bibliographyStyle(id?: string, seen = new Set<string>()): boolean {
+    if (!id || seen.has(id)) return false;
+    seen.add(id);const s=styleMap.get(id);if(!s)return false;
+    const name=(value(one(s,'name'))||id).normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    return /bibliograph|bibliograf|^references$|^referencias$/i.test(name) || bibliographyStyle(value(one(s,'basedOn')),seen);
+  }
+  function proseTypography(nodes: DocNode[]) {
+    const fonts=new Map<string,number>(), sizes=new Map<number,number>();
+    const visit=(n:DocNode)=>{
+      if(n.type==='text'&&!n.marks?.some(m=>m.type==='link')){
+        const a=textAppearance(n.marks?.find(m=>m.type==='textAppearance')?.attrs?.appearance), weight=n.text?.trim().length||0;
+        if(a.vertical)return;
+        if(a.font)fonts.set(a.font,(fonts.get(a.font)||0)+weight);
+        if(a.size)sizes.set(a.size,(sizes.get(a.size)||0)+weight);
+      }
+      n.content?.forEach(visit);
+    };nodes.forEach(visit);
+    return textAppearance({font:[...fonts].sort((a,b)=>b[1]-a[1])[0]?.[0],size:[...sizes].sort((a,b)=>b[1]-a[1])[0]?.[0]});
+  }
+  function applyTypography(node:DocNode, typography:TextAppearance){
+    const existing=node.marks?.find(m=>m.type==='textAppearance');
+    node.marks=[...(node.marks||[]).filter(m=>m.type!=='textAppearance'),{type:'textAppearance',attrs:{appearance:{...textAppearance(existing?.attrs?.appearance),...typography}}}];
+  }
+  async function paragraph(el: Element, part: string, width: number, inTable=false): Promise<DocNode[]> {
     const pp=one(el,'pPr');const ps=merge(style(value(one(pp,'pStyle')),normal),paragraphProperties(pp));
     if((ps.layout.indent||0)<0)ps.layout.left=Math.max(ps.layout.left||0,-ps.layout.indent!);
     const result: DocNode[]=[];let inline:DocNode[]=[];const raw=Array.from(el.getElementsByTagNameNS(W,'t')).map(x=>x.textContent||'').join('');
@@ -152,7 +177,7 @@ export async function readDocx(bytes: Uint8Array, options: ImportOptions): Promi
     const flush=(empty=false)=>{if(inline.length||empty){result.push({type:level?'heading':'paragraph',attrs,content:inline});inline=[];}};
     async function visit(node:Element, inherited:RunStyle, link?:string):Promise<void>{
       options.signal.throwIfAborted();
-      if(node.namespaceURI===M && node.localName==='oMath'){const latex=wordMath(node,warnings);equations++;if(node.parentElement?.localName==='oMathPara'){flush();result.push({type:'blockMath',attrs:{latex}});}else inline.push({type:'inlineMath',attrs:{latex}});return;}
+      if(node.namespaceURI===M && node.localName==='oMath'){const latex=wordMath(node,warnings);equations++;if(node.parentElement?.localName==='oMathPara'&&!inTable){flush();result.push({type:'blockMath',attrs:{latex}});}else inline.push({type:'inlineMath',attrs:{latex}});return;}
       if(node.localName==='r'){
         const rp=one(node,'rPr');const s={...inherited,...style(value(one(rp,'rStyle')),{...normal,run:inherited}).run,...runProperties(rp)};
         for(const child of Array.from(node.children))if(child.localName!=='rPr')await visit(child,s,link);return;
@@ -172,7 +197,12 @@ export async function readDocx(bytes: Uint8Array, options: ImportOptions): Promi
     }
     if(ps.breakBefore)result.push({type:'pageBreak'});
     for(const child of Array.from(el.children))if(child.localName!=='pPr')await visit(child,ps.run);
-    flush(result.length===0);return result;
+    flush(result.length===0);
+    if(bibliographyStyle(value(one(pp,'pStyle')))){
+      const typography=proseTypography(result);
+      for(const paragraph of result)for(const node of paragraph.content||[])if(node.marks?.some(m=>m.type==='link'))applyTypography(node,typography);
+    }
+    return result;
   }
   async function table(el:Element,part:string,width:number,depth:number):Promise<DocNode>{
     const grid=all(one(el,'tblGrid'),'gridCol').map(c=>(num(value(c,'w'))||1440)/15);const sum=grid.reduce((a,b)=>a+b,0);
@@ -184,22 +214,26 @@ export async function readDocx(bytes: Uint8Array, options: ImportOptions): Promi
       for(const tc of all(tr,'tc')){
         const p=one(tc,'tcPr'),span=Math.min(100,Math.max(1,num(value(one(p,'gridSpan')))||1)),vm=one(p,'vMerge');
         if(vm&&value(vm)!=='restart'&&active.has(x)){const cell=active.get(x)!;cell.attrs!.rowspan++;x+=span;continue;}
-        const fill=value(one(p,'shd'),'fill');const cell:DocNode={type:enabled(one(one(tr,'trPr'),'tblHeader'))?'tableHeader':'tableCell',attrs:{colspan:span,rowspan:1,colwidth:cols.length?Array.from({length:span},(_,i)=>cols[x+i]||Math.round(width/.75/Math.max(1,cols.length))):null,layout:blockAppearance({background:fill,border:noBorder?false:undefined})},content:await blocks(tc,part,width*span/Math.max(span,grid.length),depth+1)};
+        const fill=value(one(p,'shd'),'fill');const cell:DocNode={type:enabled(one(one(tr,'trPr'),'tblHeader'))?'tableHeader':'tableCell',attrs:{colspan:span,rowspan:1,colwidth:cols.length?Array.from({length:span},(_,i)=>cols[x+i]||Math.round(width/.75/Math.max(1,cols.length))):null,layout:blockAppearance({background:fill,border:noBorder?false:undefined})},content:await blocks(tc,part,width*span/Math.max(span,grid.length),depth+1,true)};
         if(!cell.content?.length)cell.content=[{type:'paragraph'}];cells.push(cell);
         for(let i=0;i<span;i++){active.delete(x+i);if(vm&&value(vm)==='restart')active.set(x+i,cell);}x+=span;
       }
       rows.push({type:'tableRow',content:cells});
     }
+    const typography=proseTypography(rows);
+    const size=typography.size;
+    // Compact math in cells is part of the table, not a separately numbered equation.
+    if(size){const visit=(n:DocNode)=>{if(n.type==='inlineMath')applyTypography(n,{size});n.content?.forEach(visit);};rows.forEach(visit);}
     return {type:'table',attrs:{layout:blockAppearance({border:noBorder?false:undefined})},content:rows};
   }
-  async function blocks(parent:Element,part:string,width:number,depth=0):Promise<DocNode[]>{
+  async function blocks(parent:Element,part:string,width:number,depth=0,inTable=false):Promise<DocNode[]>{
     if(depth>20)throw new Error('El documento tiene demasiados niveles de tablas.');const out:DocNode[]=[];
     for(const el of Array.from(parent.children)){
-      if(el.localName==='p')out.push(...await paragraph(el,part,width));
+      if(el.localName==='p')out.push(...await paragraph(el,part,width,inTable));
       else if(el.localName==='tbl'){
-        if(depth>0){warnings.add('Una tabla anidada se convirtió en una tabla independiente. Revisa su posición.');out.push(...await blocks(el,part,width,depth+1));}
+        if(depth>0){warnings.add('Una tabla anidada se convirtió en una tabla independiente. Revisa su posición.');out.push(...await blocks(el,part,width,depth+1,inTable));}
         else out.push(await table(el,part,width,depth));
-      }else if(['sdt','sdtContent','ins','tr','tc'].includes(el.localName))out.push(...await blocks(el,part,width,depth+1));
+      }else if(['sdt','sdtContent','ins','tr','tc'].includes(el.localName))out.push(...await blocks(el,part,width,depth+1,inTable));
     }return out;
   }
   const content:DocNode[]=[];

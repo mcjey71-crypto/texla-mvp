@@ -5,7 +5,8 @@ const mathSymbols: Record<string, string> = {
   'α':'alpha','β':'beta','γ':'gamma','δ':'delta','ε':'epsilon','ζ':'zeta','η':'eta','θ':'theta','ι':'iota','κ':'kappa','λ':'lambda','μ':'mu','ν':'nu','ξ':'xi','π':'pi','ρ':'rho','σ':'sigma','τ':'tau','υ':'upsilon','φ':'phi','χ':'chi','ψ':'psi','ω':'omega',
   'Γ':'Gamma','Δ':'Delta','Θ':'Theta','Λ':'Lambda','Ξ':'Xi','Π':'Pi','Σ':'Sigma','Υ':'Upsilon','Φ':'Phi','Ψ':'Psi','Ω':'Omega','∞':'infty','≤':'leq','≥':'geq','≠':'neq','≈':'approx','±':'pm','×':'times','·':'cdot','∂':'partial','∇':'nabla','∈':'in','∉':'notin','→':'to','∅':'emptyset',
 };
-const mathEscape = (s: string) => s.replace(/[{}%&#_$]/g, '\\$&').replace(/[α-ωΓΔΘΛΞΠΣΥΦΨΩ∞≤≥≠≈±×·∂∇∈∉→∅−]/g, symbol => symbol === '−' ? '-' : mathSymbols[symbol] ? `\\${mathSymbols[symbol]} ` : symbol);
+// Word uses zero-width spaces as empty bases for standalone superscripts.
+const mathEscape = (s: string) => s.replace(/\u200b/g, '').replace(/[{}%&#_$]/g, '\\$&').replace(/[α-ωΓΔΘΛΞΠΣΥΦΨΩ∞≤≥≠≈±×·∂∇∈∉→∅−]/g, symbol => symbol === '−' ? '-' : mathSymbols[symbol] ? `\\${mathSymbols[symbol]} ` : symbol);
 export function wordMath(el: Element | undefined, warnings: Set<string>, depth = 0): string {
   if (!el) return '';
   if (depth > 40) throw new Error('La ecuación de Word es demasiado compleja.');

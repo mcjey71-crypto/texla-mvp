@@ -24,7 +24,7 @@ export function parseMathText(text: string): DocNode[] {
   appendText(text.slice(end)); flush(); return blocks.length ? blocks : [{ type: 'paragraph' }];
 }
 const greek:Record<string,string>={α:'alpha',β:'beta',γ:'gamma',δ:'delta',ε:'epsilon',ζ:'zeta',η:'eta',θ:'theta',ι:'iota',κ:'kappa',λ:'lambda',μ:'mu',µ:'mu',ν:'nu',ξ:'xi',π:'pi',ρ:'rho',σ:'sigma',τ:'tau',υ:'upsilon',φ:'phi',χ:'chi',ψ:'psi',ω:'omega',Γ:'Gamma',Δ:'Delta',Θ:'Theta',Λ:'Lambda',Ξ:'Xi',Π:'Pi',Σ:'Sigma',Υ:'Upsilon',Φ:'Phi',Ψ:'Psi',Ω:'Omega'};
-const escapeTex = (s: string) => s.replace(/[\\{}$&#%_~^α-ωΓΔΘΛΞΠΣΥΦΨΩµ]/g, c => greek[c]?`\\ensuremath{\\${greek[c]}}`:({ '\\': '\\textbackslash{}', '{': '\\{', '}': '\\}', '$': '\\$', '&': '\\&', '#': '\\#', '%': '\\%', '_': '\\_', '~': '\\textasciitilde{}', '^': '\\textasciicircum{}' }[c]||c));
+const escapeTex = (s: string) => s.replace(/[\\{}$&#%_~^α-ωΓΔΘΛΞΠΣΥΦΨΩµ\u200b]/g, c => greek[c]?`\\ensuremath{\\${greek[c]}}`:({ '\\': '\\textbackslash{}', '{': '\\{', '}': '\\}', '$': '\\$', '&': '\\&', '#': '\\#', '%': '\\%', '_': '\\_', '~': '\\textasciitilde{}', '^': '\\textasciicircum{}', '\u200b': '\\hspace{0pt}' }[c]||c));
 function styledText(text:string,value:unknown,format:DocumentFormat){
  const a=textAppearance(value);
  if(a.size)text=`{\\fontsize{${a.size}}{${a.size*1.2}}\\selectfont ${text}}`;
@@ -53,7 +53,11 @@ export function nodeToLatex(node: DocNode, citationNumbers: Map<string, number> 
     return text;
   }
   if (node.type === 'citation') { const number = citationNumbers.get(node.attrs?.reference?.id); return number ? citationLabels ? `\\hyperlink{ref${number}}{${escapeTex(citationLabels.get(node.attrs?.reference?.id) || '[?]')}}` : `\\cite{ref${number}}` : '[referencia no disponible]'; }
-  if (node.type === 'inlineMath') return `$${node.attrs?.latex || ''}$`;
+  if (node.type === 'inlineMath') {
+    const math=`$${node.attrs?.latex || ''}$`;
+    const appearance=node.marks?.find(m=>m.type==='textAppearance')?.attrs?.appearance;
+    return appearance ? styledText(math,appearance,format) : math;
+  }
   if (node.type === 'blockMath') return `\n\\begin{equation}\n${node.attrs?.latex || ''}\n\\end{equation}\n`;
   if (node.type === 'bibliographyAnchor') return bibliographyContent || `\\section*{Referencias bibliográficas}\n\\phantomsection\n\\addcontentsline{toc}{section}{Referencias bibliográficas}\n${format.bibliographyGroups ? '\\subsection*{Referencias primarias}\n\\subsection*{Referencias complementarias}\n' : ''}`;
   if (node.type === 'figure' && validFigure(node.attrs)) {const figure=node.attrs;const graphic=`\\includegraphics[width=${(figure.width/100).toFixed(2)}\\linewidth,height=0.75\\textheight,keepaspectratio]{${imageFilename(figure.asset)}}`;if(figure.captionMode==='none')return `\n\\begingroup${figure.align==='left'?'\\raggedright':figure.align==='right'?'\\raggedleft':'\\centering'}\n${graphic}\\par\\endgroup\n`;return `\n\\begin{figure}[htbp]\n${figure.align==='left'?'\\raggedright':figure.align==='right'?'\\raggedleft':'\\centering'}\n${graphic}\n\\caption{${escapeTex(figure.caption)}}\n${figure.source?`{\\small ${escapeTex('Fuente: '+figure.source)}\\par}\n`:''}\\end{figure}\n`; }

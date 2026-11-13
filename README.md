@@ -109,6 +109,8 @@ En **Comentarios**, selecciona un fragmento y pulsa **Añadir comentario**, o us
 
 La importación Word conserva tipografía compatible, resaltados, espaciado, tablas con anchos y celdas combinadas e imágenes. Los PDF con etiquetas estructurales permiten recuperar tablas editables, incluso cuando continúan en otra página. El diseño se reconstruye y puede cambiar la paginación; para mayor fidelidad, prefiere el archivo DOCX original. Los documentos con imágenes se exportan a LaTeX en un ZIP con sus archivos.
 
+Las fórmulas de las celdas de Word se importan sin el espacio ni la numeración de las ecuaciones independientes y toman el tamaño del texto de la tabla. En los párrafos con estilo de bibliografía, los enlaces usan la fuente y el tamaño predominantes del texto de la referencia. Estas correcciones se aplican al importar de nuevo el archivo; no sobrescriben documentos ya editados.
+
 ## Plantillas y formato
 
 Once plantillas, incluidas **Tesis general** y **Tesis UTEC — PFC/Capstone**, ocho familias tipográficas (incluida Times New Roman), sangría, márgenes, espaciado, capítulos y bibliografía antes de anexos. Consulta [criterios, fuentes documentales y límites](docs/templates.md). Compartir conserva un único documento; las copias antiguas no se borran automáticamente.
