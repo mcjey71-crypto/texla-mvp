@@ -60,6 +60,11 @@ test('published editor loads and reports the enabled login providers', async ({ 
   page.on('pageerror', error => errors.push(error.name));
   await page.goto('./');
   await expect(page.locator('.tiptap')).toBeVisible();
+  await expect(page.getByLabel('Total de páginas')).toHaveText(/\d+ páginas? aprox\./);
+  const normalWidth = (await page.locator('.paper').boundingBox())!.width;
+  await page.getByLabel('Zoom', {exact:true}).selectOption('600');
+  expect((await page.locator('.paper').boundingBox())!.width).toBeGreaterThan(normalWidth * 5.9);
+  await page.getByLabel('Zoom', {exact:true}).selectOption('100');
   await page.getByRole('button',{name:'Atajos de teclado',exact:true}).first().click();
   await expect(page.getByRole('dialog')).toContainText('Insertar ecuación');
   await page.getByRole('button',{name:'Volver al documento'}).click();

@@ -316,3 +316,11 @@
 
 @media screen{.tiptap{min-height:55vh}}
 .formal-paper .tiptap a{color:#000!important}
+
+/* Magnification changes the view, never the manuscript's line wrapping or export. */
+.page-view-controls{display:flex;align-items:center;gap:10px;margin-left:auto;flex-shrink:0}
+.page-count{font-size:10px;color:#61745e;white-space:nowrap;font-variant-numeric:tabular-nums}
+.page-view-controls .zoom{margin-left:0;padding-left:0}
+.page-view-controls .zoom select{width:68px}
+@media screen{.paper{max-width:none}.paper.continuous-paper{max-width:none}}
+@media print{.paper{width:auto!important}.page-count-measurement,.page-view-controls{display:none!important}}
