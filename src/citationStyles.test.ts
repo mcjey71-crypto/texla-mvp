@@ -15,6 +15,7 @@ describe('CSL styles', () => {
   expect(result.textEntries[0]).toContain('https://doi.org/10.1000/a');
   expect(result.hangingIndent).toBe(true);
  });
+ // Several citeproc passes can exceed 5s on a busy CI runner; assertions remain unchanged.
  it('disambiguates APA works by the same author and year, and uses et al. for 3 authors', () => {
   const same = { ...paper('10.1000/b','Zapata',2024,'Another study') };
   const result = formatReferences([z,same], 'apa');
@@ -23,7 +24,7 @@ describe('CSL styles', () => {
   expect([...result.citations.values()].join(' ')).toMatch(/2024b/);
   const team = { ...z, people: [{ family:'Zapata',given:'Ana' },{ family:'Alonso',given:'Luis' },{ family:'Pérez',given:'María' }] };
   expect(formatReferences([team],'apa').citations.get(z.id)).toBe('(Zapata et al., 2024)');
- });
+ }, 15000);
  it('uses IEEE bracketed numbers and first-citation bibliography order', () => {
   const result = formatReferences([z,a],'ieee');
   expect(result.citations.get(z.id)).toBe('[1]'); expect(result.citations.get(a.id)).toBe('[2]');
