@@ -18,7 +18,7 @@ Antes de cada publicación, GitHub Actions comprueba la respuesta `/health`, la 
 6. Abre [Texla Docs](https://mcjey71-crypto.github.io/texla-mvp/), pulsa **Compartir**, introduce esa dirección y tu nombre, y pulsa **Crear enlace de edición**. El navegador recuerda el servidor. Comparte el enlace de edición con tu equipo.
 7. Para que nadie tenga que configurar la dirección al crear nuevos documentos, añade también la **variable de Actions** `VITE_COLLABORATION_URL` con esa URL y vuelve a ejecutar **Publish Texla Docs to GitHub Pages**. Es una dirección pública, no una contraseña.
 
-Los invitados solo abren el enlace: no necesitan cuenta de Cloudflare ni configurar el servidor. Para comprobar que el despliegue funciona, abre el enlace en otro navegador o en una ventana privada, escribe desde ambos y espera el estado **Guardado en el servidor**. Comprueba también que los cambios reaparecen al cerrar y volver a abrir.
+Los invitados abren el enlace e inician sesión en Texla: no necesitan cuenta de Cloudflare ni configurar el servidor. Después del acceso se abre el mismo documento; la barra de herramientas muestra las personas conectadas y anuncia las nuevas incorporaciones. Para comprobar que el despliegue funciona, abre el enlace en otro navegador o en una ventana privada, escribe desde ambos y espera el estado **Guardado en el servidor**. Comprueba también que los cambios reaparecen al cerrar y volver a abrir.
 
 Alternativa desde una terminal con Node.js 24:
 

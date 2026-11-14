@@ -1,4 +1,4 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect, type Page, type BrowserContext } from '@playwright/test';
 import { mkdtempSync, writeFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -55,21 +55,13 @@ async function energy(page: Page) {
   });
 }
 
-test('published editor loads and reports the enabled login providers', async ({ page }) => {
+test('published website requires login and reports the enabled providers', async ({ page }) => {
   const errors: string[] = [];
   page.on('pageerror', error => errors.push(error.name));
-  await page.goto('./');
-  await expect(page.locator('.tiptap')).toBeVisible();
-  await expect(page.getByLabel('Total de páginas')).toHaveText(/\d+ páginas? aprox\./);
-  const normalWidth = (await page.locator('.paper').boundingBox())!.width;
-  await page.getByLabel('Zoom', {exact:true}).selectOption('600');
-  expect((await page.locator('.paper').boundingBox())!.width).toBeGreaterThan(normalWidth * 5.9);
-  await page.getByLabel('Zoom', {exact:true}).selectOption('100');
-  await page.getByRole('button',{name:'Atajos de teclado',exact:true}).first().click();
-  await expect(page.getByRole('dialog')).toContainText('Insertar ecuación');
-  await page.getByRole('button',{name:'Volver al documento'}).click();
   const settings = page.waitForResponse(response => new URL(response.url()).pathname === '/auth/v1/settings');
-  await page.getByRole('button', { name: 'Iniciar sesión', exact: true }).click();
+  await page.goto('./');
+  await expect(page.getByRole('heading', {name:'Inicia sesión o crea tu cuenta.'})).toBeVisible();
+  await expect(page.locator('.tiptap')).toHaveCount(0);
   const response = await settings;
   expect(response.status()).toBe(200);
   const data = await response.json();
@@ -81,13 +73,31 @@ test('published editor loads and reports the enabled login providers', async ({ 
   expect(errors).toEqual([]);
 });
 
-test('live shared comments, typography and voice synchronize through the published server', async ({ page, browser, request }, testInfo) => {
+// Authentication is a browser fixture here, not a real registration. The room,
+// WebSockets, shared comments and audio still use the published collaboration service.
+async function auditAccount(context: BrowserContext, suffix: string, name: string) {
+  const id = `00000000-0000-4000-8000-${suffix.padStart(12,'0')}`;
+  const value = {access_token:`${Buffer.from('{"alg":"HS256","typ":"JWT"}').toString('base64url')}.${Buffer.from(JSON.stringify({sub:id,exp:Math.floor(Date.now()/1000)+3600,aud:'authenticated',role:'authenticated'})).toString('base64url')}.audit`,refresh_token:'audit-only',token_type:'bearer',expires_at:Math.floor(Date.now()/1000)+3600,expires_in:3600,user:{id,aud:'authenticated',role:'authenticated',email:`audit${suffix}@example.com`,app_metadata:{provider:'email'},user_metadata:{full_name:name},created_at:new Date().toISOString()}};
+  await context.addInitScript(session => localStorage.setItem('sb-ciesoqrffrdofyekrvck-auth-token',JSON.stringify(session)),value);
+  const versions = new Map<string,number>();
+  await context.route('https://ciesoqrffrdofyekrvck.supabase.co/rest/v1/**', route => {
+    if (new URL(route.request().url()).pathname.endsWith('/save_texla_document')) {
+      const id = route.request().postDataJSON().p_id, version = (versions.get(id) || 0) + 1; versions.set(id,version);
+      return route.fulfill({json:{version}});
+    }
+    return route.fulfill({json:[]});
+  });
+  await context.route('https://ciesoqrffrdofyekrvck.supabase.co/auth/v1/user', route => route.fulfill({json:value.user}));
+}
+
+test('live shared comments, typography and voice synchronize through the published server', async ({ page, context, browser, request }, testInfo) => {
   const origin = new URL(testInfo.project.use.baseURL!).origin;
   const health = await request.get(server + '/health', { headers: { Origin: origin } });
   expect(health.status()).toBe(200);
   expect(health.headers()['access-control-allow-origin']).toBe(origin);
   expect((await health.json()).voiceVersion).toBe(1);
   const guestContext = await browser.newContext({ permissions: ['microphone'] });
+  await auditAccount(context, '1', 'Prueba A'); await auditAccount(guestContext, '2', 'Prueba B');
   const guest = await guestContext.newPage();
   await probe(page); await probe(guest);
   const pageErrors: string[] = [];
@@ -103,6 +113,11 @@ test('live shared comments, typography and voice synchronize through the publish
   try {
     await test.step('Create an isolated test document on the published website', async () => {
       await page.goto('./');
+      await expect(page.getByLabel('Total de páginas')).toHaveText(/\d+ páginas? aprox\./);
+      const normalWidth = (await page.locator('.paper').boundingBox())!.width;
+      await page.getByLabel('Zoom', {exact:true}).selectOption('600');
+      expect((await page.locator('.paper').boundingBox())!.width).toBeGreaterThan(normalWidth * 5.9);
+      await page.getByLabel('Zoom', {exact:true}).selectOption('100');
       await page.getByRole('button', { name: 'Nuevo documento' }).click();
       await page.getByPlaceholder('Mi próxima gran idea').fill('Comprobación temporal de colaboración');
       await page.getByRole('button', { name: 'Crear documento', exact: true }).click();
@@ -119,6 +134,9 @@ test('live shared comments, typography and voice synchronize through the publish
       await guest.goto(link);
       await expect(page.locator('.collaboration-status')).toContainText('Guardado en el servidor');
       await expect(guest.locator('.collaboration-status')).toContainText('Guardado en el servidor');
+      await expect(page.locator('.presence-notice')).toContainText('Prueba B se ha unido al documento.');
+      await expect(page.getByLabel('Participantes del documento')).toContainText('2 en línea');
+      console.log('::notice::Registered-editor UI and join notification verified with synthetic browser sessions. No real signup/email delivery is exercised.');
     });
     await test.step('Synchronize text size, a comment, a reply and resolution on the published website', async () => {
       await page.locator('.tiptap p').first().click(); await page.keyboard.type('Fragmento para revisar.');

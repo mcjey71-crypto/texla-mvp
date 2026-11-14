@@ -20,7 +20,7 @@ export function useAccount() {
       if (!observed) setSession(data.session);
       setLoading(false);
     }).catch(error => { settled = true; if (active) { setError(accountError(error)); setLoading(false); } });
-    const timer = setTimeout(() => { if (active && !settled) { setLoading(false); setError('La sesión está tardando en responder. Puedes seguir usando los documentos de este navegador.'); } }, 15000);
+    const timer = setTimeout(() => { if (active && !settled) { setLoading(false); setError('La sesión está tardando en responder. Revisa tu conexión y vuelve a iniciar sesión. Tus borradores se conservan.'); } }, 15000);
     return () => { active = false; clearTimeout(timer); data.subscription.unsubscribe(); };
   }, []);
   return { session, loading, error };

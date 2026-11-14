@@ -12,8 +12,9 @@ async function setup(context:BrowserContext,id?:string) {
     if(url.pathname.startsWith('/storage/v1/object/public/texla-images/')){const bytes=images.get(url.pathname.slice('/storage/v1/object/public/texla-images/'.length));return bytes?route.fulfill({contentType:'application/octet-stream',body:bytes}):json({message:'Not found'},404);}
     if(url.pathname==='/auth/v1/settings')return json({external:{google:true,email:true}});
     if(url.pathname==='/auth/v1/otp')return json({});
+    if(url.pathname==='/auth/v1/token')return json(session(id || bob));
     if(url.pathname==='/auth/v1/logout')return route.fulfill({status:204});
-    if(url.pathname==='/auth/v1/user')return json(session(id!).user);
+    if(url.pathname==='/auth/v1/user')return json(session(id || bob).user);
     let uid='';try{uid=JSON.parse(Buffer.from((req.headers().authorization||'').split('.')[1],'base64url').toString()).sub;}catch{}
     if(!uid)return json({message:'Authentication required'},401);
     if(url.pathname.startsWith('/storage/v1/object/texla-images/')&&req.method()==='POST'){const path=url.pathname.slice('/storage/v1/object/texla-images/'.length);if(!path.startsWith(uid+'/'))return json({message:'policy violation'},403);if(images.has(path))return json({statusCode:'409',message:'The resource already exists'},409);images.set(path,req.postDataBuffer()!);return json({Key:'texla-images/'+path});}
@@ -50,7 +51,7 @@ test('review comments are saved in the private account and reopened on another d
 });
 
 test('Google and email login options are available, use PKCE and preserve local work',async({page,context})=>{
-  await setup(context);await page.goto('/');await page.getByRole('button',{name:'Iniciar sesión',exact:true}).click();await expect(page.getByRole('button',{name:'Continuar con Google'})).toBeVisible();
+  await setup(context);await page.goto('/');await expect(page.locator('.tiptap')).toHaveCount(0);await expect(page.getByRole('button',{name:'Continuar con Google'})).toBeVisible();
   await page.getByLabel('Tu correo electrónico').fill('ana@example.com');const request=page.waitForRequest(r=>r.url().includes('/auth/v1/otp'));await page.getByRole('button',{name:'Enviarme enlace para entrar'}).click();const req=await request;expect(req.postDataJSON().email).toBe('ana@example.com');expect(req.postDataJSON().code_challenge).toBeTruthy();await expect(page.getByRole('status')).toContainText('Revisa tu correo');
   await page.route('https://texla-test.supabase.co/auth/v1/authorize**',route=>route.fulfill({contentType:'text/html',body:'Google test redirect'}));const google=page.waitForRequest(r=>r.url().includes('/auth/v1/authorize'));await page.getByRole('button',{name:'Continuar con Google'}).click();const url=new URL((await google).url());expect(url.searchParams.get('provider')).toBe('google');expect(url.searchParams.get('redirect_to')).toBe('http://127.0.0.1:5176/');expect(url.searchParams.get('code_challenge')).toBeTruthy();
 });
@@ -58,7 +59,7 @@ test('private documents autosave, open on another device and stay out of a diffe
   const errors:string[]=[];page.on('pageerror',e=>errors.push(e.message));await setup(context,alice);await page.goto('/');await create(page,'Tesis privada');
   const other=await browser.newContext();await setup(other,alice);const second=await other.newPage();await second.goto('/');await second.getByRole('button',{name:'Mi cuenta',exact:true}).click();await second.getByRole('button',{name:/^Tesis privada/}).click();await expect(second.locator('.tiptap')).toContainText('Contenido privado de la cuenta.');
   const stranger=await browser.newContext();await setup(stranger,bob);const third=await stranger.newPage();await third.goto('/');await third.getByRole('button',{name:'Mi cuenta',exact:true}).click();await expect(third.locator('.account-library')).not.toContainText('Tesis privada');
-  await page.getByRole('button',{name:'Mi cuenta',exact:true}).click();await page.getByRole('button',{name:'Cerrar sesión',exact:true}).click();await expect(page.getByRole('button',{name:'Iniciar sesión',exact:true})).toBeVisible();await expect(page.locator('.document-list')).not.toContainText('Tesis privada');
+  await page.getByRole('button',{name:'Mi cuenta',exact:true}).click();await page.getByRole('button',{name:'Cerrar sesión',exact:true}).click();await expect(page.getByRole('heading',{name:'Inicia sesión o crea tu cuenta.'})).toBeVisible();await expect(page.locator('.document-list')).toHaveCount(0);
   expect(errors).toEqual([]);await other.close();await stranger.close();
 });
 test('conflicting writes preserve local edits and can be saved as a separate document',async({browser,page,context})=>{
@@ -115,20 +116,46 @@ async function chooseImage(page:import('@playwright/test').Page){
  const png=await page.evaluate(()=>{const canvas=document.createElement('canvas');canvas.width=600;canvas.height=240;const ctx=canvas.getContext('2d')!;ctx.fillStyle='#486243';ctx.fillRect(0,0,600,240);return canvas.toDataURL('image/png').split(',')[1];});
  await page.getByRole('button',{name:'Imagen',exact:true}).click();await page.getByLabel('Archivo de imagen').setInputFiles({name:'proyecto.png',mimeType:'image/png',buffer:Buffer.from(png,'base64')});await expect(page.getByAltText('Vista previa de la imagen')).toBeVisible();await page.getByLabel('Pie de figura',{exact:true}).fill('Esquema del proyecto');
 }
-test('encrypted images survive cloud reopening and are visible to shared guests without exposing upload rights',async({page,context,browser})=>{
+test('encrypted images survive cloud reopening and are visible to registered collaborators using their own upload rights',async({page,context,browser})=>{
  await setup(context,alice);await page.goto('/');await create(page,'Proyecto ilustrado');const id=[...rows.keys()][0];
  await chooseImage(page);await page.getByRole('button',{name:'Insertar imagen',exact:true}).click();await expect(page.locator('.texla-figure img')).toBeVisible();await expect.poll(()=>JSON.stringify(rows.get(id)?.payload)).toContain('"remote"');
  expect(images.size).toBe(1);const encrypted=[...images.values()][0];expect([...encrypted.subarray(0,8)]).not.toEqual([137,80,78,71,13,10,26,10]);expect(JSON.stringify(rows.get(id)?.payload)).not.toContain('data:image');
- const secondContext=await browser.newContext();await setup(secondContext,alice);const second=await secondContext.newPage();const guestContext=await browser.newContext();await setup(guestContext);const guest=await guestContext.newPage();
+ const secondContext=await browser.newContext();await setup(secondContext,alice);const second=await secondContext.newPage();const guestContext=await browser.newContext();await setup(guestContext,bob);const guest=await guestContext.newPage();
  try{
   await second.goto('/');await second.getByRole('button',{name:'Mi cuenta',exact:true}).click();await second.getByRole('button',{name:/^Proyecto ilustrado/}).click();await expect(second.locator('.texla-figure img')).toBeVisible();expect(await second.locator('.texla-figure img').evaluate((el:HTMLImageElement)=>el.naturalWidth)).toBe(600);
   await page.getByRole('button',{name:'Compartir',exact:true}).click();await page.getByLabel('Servidor de colaboración').fill('http://127.0.0.1:8790');await page.getByRole('button',{name:'Crear enlace de edición'}).click();await expect(page.getByLabel('Enlace de edición')).toBeVisible();const link=await page.getByLabel('Enlace de edición').inputValue();await page.getByRole('button',{name:'Cerrar',exact:true}).click();
   await guest.goto(link);await expect(guest.locator('.texla-figure img')).toBeVisible();await expect(guest.locator('.collaboration-status')).toContainText('Guardado en el servidor');expect(await guest.locator('.texla-figure img').evaluate((el:HTMLImageElement)=>el.naturalWidth)).toBe(600);
   await guest.getByRole('button',{name:'Editar imagen',exact:true}).click();await guest.getByLabel('Pie de figura',{exact:true}).fill('Esquema revisado');await guest.getByRole('button',{name:'Guardar figura',exact:true}).click();await expect(page.locator('figcaption')).toContainText('Esquema revisado');
-  await chooseImage(guest);await guest.getByRole('button',{name:'Insertar imagen',exact:true}).click();await expect(guest.getByRole('alert')).toContainText('Inicia sesión');expect(images.size).toBe(1);await expect(guest.locator('.texla-figure')).toHaveCount(1);await guest.getByRole('button',{name:'Cerrar',exact:true}).click();
+  await chooseImage(guest);await guest.getByRole('button',{name:'Insertar imagen',exact:true}).click();await expect(guest.locator('.texla-figure')).toHaveCount(2);expect(images.size).toBe(2);expect([...images.keys()].some(key=>key.startsWith(bob+'/'))).toBe(true);
   await page.getByRole('button',{name:'Compartir',exact:true}).click();await page.getByRole('button',{name:'Dejar de compartir',exact:true}).click();await page.getByRole('button',{name:'Confirmar: dejar de compartir'}).click();
  }finally{await secondContext.close();await guestContext.close();}
 });
 test('missing image bucket keeps the upload form and existing document intact, then retry succeeds',async({page,context})=>{
  await setup(context,alice);let missing=true;await context.route('https://texla-test.supabase.co/storage/v1/object/texla-images/**',route=>missing?route.fulfill({status:404,contentType:'application/json',body:JSON.stringify({statusCode:'404',message:'Bucket not found'})}):route.fallback());await page.goto('/');await create(page,'Conservar contenido');await chooseImage(page);await page.getByRole('button',{name:'Insertar imagen',exact:true}).click();await expect(page.getByRole('alert')).toContainText('Activa el almacenamiento');await expect(page.locator('.texla-figure')).toHaveCount(0);await expect(page.locator('.tiptap')).toContainText('Contenido privado');await expect(page.getByAltText('Vista previa de la imagen')).toBeVisible();missing=false;await page.getByRole('button',{name:'Insertar imagen',exact:true}).click();await expect(page.locator('.texla-figure img')).toBeVisible();expect(images.size).toBe(1);
+});
+
+test('shared invitation waits for login, resumes in a callback tab and announces the registered collaborator',async({page,context,browser})=>{
+ await setup(context,alice);await page.goto('/');await create(page,'Equipo con acceso');
+ await page.getByRole('button',{name:'Compartir',exact:true}).click();
+ await page.getByLabel('Servidor de colaboración').fill('http://127.0.0.1:8790');
+ await page.getByRole('button',{name:'Crear enlace de edición',exact:true}).click();
+ const link=await page.getByLabel('Enlace de edición').inputValue();await page.getByRole('button',{name:'Cerrar',exact:true}).click();
+ const inviteContext=await browser.newContext();await setup(inviteContext);
+ try {
+  const invite=await inviteContext.newPage();const sockets:string[]=[];invite.on('websocket',socket=>{if(socket.url().includes('/rooms/'))sockets.push(socket.url());});
+  await invite.goto(link);await expect(invite.locator('.login-invitation')).toContainText('Te han invitado');
+  await expect(invite.locator('.tiptap')).toHaveCount(0);expect(sockets).toEqual([]);
+  await invite.getByLabel('Tu correo electrónico').fill('luis@example.com');
+  await invite.getByRole('button',{name:'Enviarme enlace para entrar'}).click();await expect(invite.getByRole('status')).toContainText('Revisa tu correo');
+  const callback=await inviteContext.newPage();await callback.goto('/?code=test-email-code');
+  await expect(callback.locator('.collaboration-status')).toContainText('Guardado en el servidor');
+  await expect(callback.getByLabel('Nombre del documento')).toHaveValue('Equipo con acceso');
+  await expect(invite.locator('.collaboration-status')).toContainText('Guardado en el servidor');
+  await expect(page.locator('.presence-notice')).toContainText('luis se ha unido al documento.');
+  await page.getByLabel('Participantes del documento').click();await expect(page.locator('.participants-list')).toContainText('luis');await expect(page.locator('.participants-list')).toContainText('ana (tú)');
+  await expect(page.getByLabel('Participantes del documento')).toContainText('2 en línea');
+  expect(await callback.evaluate(()=>localStorage.getItem('texla-pending-shared-entry'))).toBeNull();
+  await callback.getByRole('button',{name:'Mi cuenta',exact:true}).click();await callback.getByRole('button',{name:'Cerrar sesión',exact:true}).click();
+  await expect(callback.locator('.tiptap')).toHaveCount(0);await expect(page.getByLabel('Participantes del documento')).toContainText('1 en línea');
+ } finally {await inviteContext.close();}
 });

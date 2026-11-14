@@ -46,7 +46,7 @@ export default function CommentsPanel({ editor, name, request, selected, shared,
     <p className="comments-intro">{shared ? 'Visibles para todas las personas con el enlace de este documento.' : 'Se guardan con el documento y se incluirán cuando lo compartas.'}</p>
     {shared && <p className="comments-sync" role="status">{syncStatus}</p>}
     <div className="comments-controls"><select aria-label="Mostrar comentarios" value={filter} onChange={e => setFilter(e.target.value)}><option value="open">Pendientes</option><option value="resolved">Resueltos</option><option value="all">Todos</option></select><button onMouseDown={e => e.preventDefault()} onClick={start} disabled={!editor.isEditable}><Plus size={15}/> Añadir comentario</button></div>
-    <label className="comment-author">Tu nombre en los comentarios<input maxLength={60} value={author} onChange={e => { setAuthor(e.target.value); onNameChange(e.target.value); try { localStorage.setItem('texla-participant-name', e.target.value); } catch { /* The name still works for this session. */ } }} placeholder="Tu nombre"/></label>
+    <label className="comment-author">Tu nombre en los comentarios<input maxLength={60} value={author} onChange={e => { setAuthor(e.target.value); onNameChange(e.target.value); }} placeholder="Tu nombre"/></label>
     {draft !== null && <form className="comment-composer" onSubmit={e => { e.preventDefault(); submit(); }}>
       <strong>{quote ? 'Sobre el texto seleccionado' : 'Comentario general'}</strong>{quote && <blockquote>{quote}</blockquote>}
       {quote && anchor.current?.removed && <small>El texto se eliminó. Se guardará como comentario general.</small>}

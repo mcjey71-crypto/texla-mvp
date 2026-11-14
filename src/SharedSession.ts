@@ -38,10 +38,22 @@ export class SharedSession {
   private attempts = 0;
   private handshake?: ReturnType<typeof setTimeout>;
 
-  constructor(readonly access: SharedAccess) { this.setName('Invitado'); }
+  constructor(readonly access: SharedAccess, private readonly accountId?: string) { this.setName('Invitado'); }
   subscribe(listener: () => void) { this.listeners.add(listener); return () => { this.listeners.delete(listener); }; }
   private emit = () => { for (const listener of this.listeners) listener(); };
-  get people() { return [...this.awareness.getStates().values()].filter(s => typeof s.user?.name === 'string').map(s => s.user as {name:string; color:string}); }
+  get people() {
+    const people = new Map<string,{id:string;name:string;color:string;self:boolean;connections:number}>();
+    for (const [clientId,state] of this.awareness.getStates()) {
+      if (typeof state.user?.name !== 'string') continue;
+      const user = state.user;
+      const id = typeof user.accountId === 'string' && /^[a-f0-9-]{36}$/i.test(user.accountId) ? user.accountId : String(clientId);
+      const existing = people.get(id);
+      if (existing) { existing.connections++; existing.self ||= clientId === this.doc.clientID; }
+      else people.set(id,{id,name:user.name,color:user.color,self:clientId === this.doc.clientID,connections:1});
+    }
+    return [...people.values()];
+  }
+
   snapshot() {
     const format = Object.fromEntries(FORMAT_KEYS.map(k => [k, this.metadata.get(`format.${k}`)]));
     return { title: String(this.metadata.get('title') || 'Documento compartido').slice(0, 500), citationStyle: resolveStyle(this.metadata.get('citationStyle')), format: resolveFormat(format), references: [...this.references.values()].filter(validReference) };
@@ -116,7 +128,7 @@ export class SharedSession {
     if (this.socket?.readyState === WebSocket.OPEN && this.authenticated) this.socket.send(JSON.stringify({ type: 'awareness', data: toBase64(encodeAwarenessUpdate(this.awareness, [this.doc.clientID])) }));
   }
   private onAwareness = (_: unknown, origin: unknown) => { if (origin !== this) this.sendAwareness(); };
-  setName(name: string) { this.awareness.setLocalState({ ...this.awareness.getLocalState(), user: { name: name.trim().slice(0, 60) || 'Invitado', color: ['#376e53', '#80599c', '#ae6440', '#356e9b'][this.doc.clientID % 4] } }); }
+  setName(name: string) { this.awareness.setLocalState({ ...this.awareness.getLocalState(), user: { ...(this.accountId ? {accountId:this.accountId} : {}), name: name.trim().slice(0, 60) || 'Invitado', color: ['#376e53', '#80599c', '#ae6440', '#356e9b'][this.doc.clientID % 4] } }); }
   destroy() {
     this.stopped = true; this.emit(); this.voiceListeners.clear(); clearTimeout(this.retry); clearTimeout(this.flushTimer); clearTimeout(this.handshake); clearInterval(this.heartbeat);
     window.removeEventListener('online', this.reconnect); window.removeEventListener('offline', this.disconnect); this.awareness.setLocalState(null); this.socket?.close();

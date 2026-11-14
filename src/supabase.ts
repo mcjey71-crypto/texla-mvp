@@ -1,4 +1,5 @@
 import { createClient, type Session } from '@supabase/supabase-js';
+import {rememberSharedEntry} from './sharedEntry';
 import { isPublicSupabaseKey } from '../shared/supabase-public-key.js';
 
 export function publicConfiguration(url: string | undefined, key: string | undefined) {
@@ -30,7 +31,7 @@ export function publicImageUrl(path:string){
   if(!/^[a-f0-9-]{36}\/[a-f0-9-]{36}\.bin$/i.test(path))throw new Error('La ruta de imagen no es válida.');
   return `${configuration.url}/storage/v1/object/public/texla-images/${path}`;
 }
-export const accountRedirectUrl = () => new URL(import.meta.env.BASE_URL, window.location.origin).href;
+export const accountRedirectUrl = () => { rememberSharedEntry(); return new URL(import.meta.env.BASE_URL, window.location.origin).href; };
 export async function signInOptions(signal: AbortSignal): Promise<{ google: boolean; email: boolean }> {
   if (!configuration) return { google: false, email: false };
   const response = await fetch(`${configuration.url}/auth/v1/settings`, { headers: { apikey: configuration.key }, signal });

@@ -12,7 +12,13 @@ import type { SharedSession } from './SharedSession';
 
 const SERVER_KEY = 'texla-collaboration-server';
 export function configuredServer() { const fallback = (import.meta.env.VITE_COLLABORATION_URL as string | undefined) || ''; try { return localStorage.getItem(SERVER_KEY) || fallback; } catch { return fallback; } }
-export function participantName() { try { return localStorage.getItem('texla-participant-name') || 'Invitado'; } catch { return 'Invitado'; } }
+export function participantName(session?:Session|null) {
+  const fallback = session?.user.user_metadata?.full_name || session?.user.user_metadata?.name || session?.user.email?.split('@')[0] || 'Invitado';
+  try { return (localStorage.getItem(session ? `texla-participant-name:${session.user.id}` : 'texla-participant-name') || String(fallback)).trim().slice(0,60) || 'Invitado'; } catch { return String(fallback).slice(0,60); }
+}
+export function saveParticipantName(name:string, session?:Session|null) {
+  try { localStorage.setItem(session ? `texla-participant-name:${session.user.id}` : 'texla-participant-name', name.trim().slice(0,60)); } catch { /* The live name still works. */ }
+}
 async function request(server: string, path: string, init?: RequestInit) {
   const response = await fetch(`${server}${path}`, { ...init, signal: AbortSignal.timeout(20000), credentials: 'omit', referrerPolicy: 'no-referrer' });
   const data = await response.json(); if (!response.ok) throw new Error(data.error || 'No se pudo conectar con el servidor.'); return data;
@@ -21,12 +27,12 @@ async function request(server: string, path: string, init?: RequestInit) {
 export default function ShareDocument({ document, editor, session, authSession, onCreated, onStopped }: { document: SavedDocument; authSession:Session|null; editor: Editor; session: SharedSession | null; onCreated: (doc: SavedDocument) => void; onStopped: () => void }) {
   const [server, setServer] = useState(configuredServer);
   const [configureConnection, setConfigureConnection] = useState(() => !configuredServer());
-  const [name, setName] = useState(participantName);
+  const [name, setName] = useState(() => participantName(authSession));
   const [busy, setBusy] = useState(false); const [error, setError] = useState(''); const [copied, setCopied] = useState(false); const [confirmStop, setConfirmStop] = useState(false);
   const [createdAccess, setCreatedAccess] = useState<SharedAccess | null>(null);
   const access = document.shared || createdAccess;
   const link = access ? shareLink(access, window.location.href) : '';
-  function changeName(value: string) { setName(value); session?.setName(value); try { localStorage.setItem('texla-participant-name', value.slice(0, 60)); } catch { /* Name is optional. */ } }
+  function changeName(value: string) { setName(value); session?.setName(value); saveParticipantName(value, authSession); }
   async function create() {
     setBusy(true); setError('');
     try {
@@ -60,7 +66,7 @@ export default function ShareDocument({ document, editor, session, authSession, 
     <p>Texto, imágenes, tablas, ecuaciones y bibliografía se actualizan entre los participantes.</p>
     <label className="field-label">Tu nombre para colaborar<input maxLength={60} value={name} onChange={e => changeName(e.target.value)} placeholder="Tu nombre"/></label>
     {access ? <>
-      <div className="share-permission"><strong>Cualquier persona con el enlace puede editar.</strong><p>Compártelo únicamente con tu equipo. El enlace funciona como una llave de acceso.</p></div>
+      <div className="share-permission"><strong>Quienes tengan el enlace podrán editar después de iniciar sesión.</strong><p>Compártelo únicamente con tu equipo. El enlace funciona como una llave de acceso.</p></div>
       <label className="field-label">Enlace de edición<input readOnly value={link} onFocus={e => e.target.select()}/></label>
       <button className="primary-button" onClick={async () => { try { await navigator.clipboard.writeText(link); setCopied(true); } catch { setError('Selecciona y copia el enlace del campo de arriba.'); } }}>{copied ? 'Enlace copiado' : 'Copiar enlace de edición'}</button>
       {session && <p className="privacy-note">{session.people.length || 1} participante(s) en esta sesión. Hasta 12 conexiones simultáneas por documento.</p>}
