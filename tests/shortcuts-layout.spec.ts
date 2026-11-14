@@ -35,6 +35,7 @@ test('writing shortcuts change selected text, insert one page break and open too
 
 test('outline is compact, highlights the current section and shortcuts stay reachable on mobile', async ({page}) => {
   await page.setViewportSize({width:1440,height:1000});await page.goto('/');
+  await page.getByRole('button',{name:'Estructura y diseño',exact:true}).click();
   const links=page.locator('.outline button');await expect(links).toHaveCount(4);
   const gap=await page.locator('.outline').evaluate(el=>parseFloat(getComputedStyle(el).rowGap));expect(gap).toBeLessThanOrEqual(3);
   await links.last().click();await expect(links.last()).toHaveAttribute('aria-current','location');await expect(links.first()).not.toHaveAttribute('aria-current','location');

@@ -228,7 +228,7 @@ export async function readDocx(bytes: Uint8Array, options: ImportOptions): Promi
     flush(result.length===0);
     if(bibliographyStyle(value(one(pp,'pStyle')))){
       const typography=proseTypography(result);
-      for(const paragraph of result)for(const node of paragraph.content||[])if(node.marks?.some(m=>m.type==='link'))applyTypography(node,typography);
+      for(const paragraph of result)for(const node of paragraph.content||[])if(node.marks?.some(m=>m.type==='link'))applyTypography(node,{...typography,color:'000000'});
     }
     return result;
   }

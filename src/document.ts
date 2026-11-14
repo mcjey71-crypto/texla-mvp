@@ -49,7 +49,7 @@ export function nodeToLatex(node: DocNode, citationNumbers: Map<string, number> 
       if (mark.type === 'italic') text = `\\textit{${text}}`;
       // Underline boxes prevent xurl from breaking long DOI links across lines.
       if (mark.type === 'underline' && !isURL) text = `\\underline{${text}}`;
-      if (mark.type === 'textAppearance') text = styledText(text, mark.attrs?.appearance, format);
+      if (mark.type === 'textAppearance') text = styledText(text, node.marks?.some(m=>m.type==='link')?{...mark.attrs?.appearance,color:undefined}:mark.attrs?.appearance, format);
     }
     return text;
   }
@@ -126,13 +126,15 @@ export function exportLatex(title: string, content: DocNode, library: Reference[
   const headerText=header?.content?.filter(n=>n.type!=='figure').map(n=>nodeToLatex(n,numbers,formatted.citations,format)).join('')||'';
   const positions=footerPositions(format), side={left:'L',center:'C',right:'R'};
   const headerSetup=header ? `${headerImage?`\\fancyhead[L]{\\includegraphics[width=.22\\textwidth,height=34pt,keepaspectratio]{${imageFilename(headerImage.attrs!.asset)}}}\n`:''}\\fancyhead[${format.pageNumbers==='top-right'?'C':'R'}]{\\begin{minipage}[c]{${format.pageNumbers==='top-right'?'.5':'.7'}\\textwidth}${headerText}\\end{minipage}}\n` : format.headerMode==='custom'&&format.headerText ? `\\fancyhead[L]{\\begin{minipage}{.8\\textwidth}\\raggedright\\small ${escapeTex(format.headerText)}\\end{minipage}}\n` : '';
-  const footerSetup=`${format.footerBrand?`\\fancyfoot[${side[positions.brand]}]{\\scriptsize\\textsc{Texla Docs}}\n`:''}${format.footerText?`\\fancyfoot[${side[positions.text]}]{\\begin{minipage}{.3\\textwidth}\\centering\\footnotesize ${escapeTex(format.footerText)}\\end{minipage}}\n`:''}`;
+  const footerSetup=`${format.footerText?`\\fancyfoot[${side[positions.text]}]{\\begin{minipage}{.3\\textwidth}\\centering\\footnotesize ${escapeTex(format.footerText)}\\end{minipage}}\n`:''}`;
+  const watermark= format.footerBrand ? '\\AddToShipoutPictureBG{\\AtPageLowerLeft{\\put(\\LenToUnit{.5\\paperwidth},\\LenToUnit{7mm}){\\makebox(0,0){\\textcolor[HTML]{8AA494}{\\fontsize{8}{10}\\selectfont Texla Docs - El arte de escribir bien}}}}}\n' : '';
+
   const numberSetup=format.pageNumbers==='none'?'':`\\fancy${format.pageNumbers==='top-right'?'head[R]':`foot[${format.pageNumbers==='bottom-left'?'L':format.pageNumbers==='bottom-right'?'R':'C'}]`}{\\small ${escapeTex(format.pageNumberPrefix)}\\thepage{}${escapeTex(format.pageNumberSuffix)}}\n`;
   const baseFurniture=`\\fancyhf{}\n\\renewcommand{\\headrulewidth}{0pt}\n\\renewcommand{\\footrulewidth}{0pt}\n${headerSetup}${footerSetup}`;
   const pageNumbers=`\\usepackage{fancyhdr}\n\\setlength{\\headheight}{${header||headerSetup?'40':'15'}pt}\n\\fancypagestyle{texla}{${baseFurniture}${numberSetup}}\n\\fancypagestyle{texlafirst}{${baseFurniture}}\n\\pagestyle{texla}\n\\pagenumbering{${format.pageNumberStyle}}\n`;
   // Spanish Babel renders \roman as small capitals; preserve an explicit lowercase choice.
   const initialPage=`${format.pageNumberStyle==='roman'?'\\renewcommand{\\thepage}{\\romannumeral\\value{page}}\n':''}\\setcounter{page}{${format.pageNumberStart}}\n${format.numberFirstPage?'':'\\thispagestyle{texlafirst}\n'}`;
-  return `\\documentclass[${format.fontSize}pt,${paper.classOption}]{article}\n${fontLatex(format.fontFamily)}${importedStyles}${sectionPackages}\\usepackage[spanish]{babel}\n\\usepackage{amsmath,amssymb}\n\\usepackage{graphicx}\n\\usepackage{xurl}\n\\urlstyle{same}\n\\usepackage{setspace}\n\\usepackage{longtable,array,booktabs,multirow}\n\\usepackage[${paper.geometry},margin=${format.margin}cm]{geometry}\n\\setstretch{${format.lineSpacing}}\n\\setlength{\\parindent}{${format.firstLineIndent}cm}\n\\setlength{\\parskip}{${format.paragraphSpacing}pt}\n${format.firstLineIndent ? '\\usepackage{indentfirst}\n' : ''}${structure}${pageNumbers}\\usepackage[hidelinks]{hyperref}\n\\setlength{\\emergencystretch}{2em}\n\\title{${escapeTex(title)}}\n\\date{}\n\\begin{document}\n${initialPage}${nodeToLatex(content, numbers, formatted.citations, format, bibliography)}${anchored(content) ? '' : bibliography}\n\\end{document}\n`;
+  return `\\documentclass[${format.fontSize}pt,${paper.classOption}]{article}\n${fontLatex(format.fontFamily)}${importedStyles}${sectionPackages}${format.footerBrand?'\\usepackage{eso-pic,xcolor}\n':''}\\usepackage[spanish]{babel}\n\\usepackage{amsmath,amssymb}\n\\usepackage{graphicx}\n\\usepackage{xurl}\n\\urlstyle{same}\n\\usepackage{setspace}\n\\usepackage{longtable,array,booktabs,multirow}\n\\usepackage[${paper.geometry},margin=${format.margin}cm]{geometry}\n\\setstretch{${format.lineSpacing}}\n\\setlength{\\parindent}{${format.firstLineIndent}cm}\n\\setlength{\\parskip}{${format.paragraphSpacing}pt}\n${format.firstLineIndent ? '\\usepackage{indentfirst}\n' : ''}${structure}${pageNumbers}\\usepackage[hidelinks]{hyperref}\n\\setlength{\\emergencystretch}{2em}\n\\title{${escapeTex(title)}}\n\\date{}\n\\begin{document}\n${initialPage}${watermark}${nodeToLatex(content, numbers, formatted.citations, format, bibliography)}${anchored(content) ? '' : bibliography}\n\\end{document}\n`;
 }
 export const initialContent: DocNode = { type: 'doc', content: [
  { type: 'heading', attrs: { level: 1 }, content: [{ type: 'text', text: 'El lenguaje del universo' }] },

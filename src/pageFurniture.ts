@@ -22,15 +22,18 @@ export function runningPageCss(input: DocumentFormat) {
   const f = resolveFormat(input), family = fontDefinition(f.fontFamily).css;
   const numberSlot = f.pageNumbers === 'bottom' ? 'bottom-center' : f.pageNumbers;
   const style = f.pageNumberStyle === 'arabic' ? 'decimal' : f.pageNumberStyle === 'roman' ? 'lower-roman' : 'upper-roman';
-  const slots: Record<string,string> = { 'top-left': f.headerMode === 'custom' && f.headerText ? cssContent(f.headerText) : 'none', 'top-right':'none', 'bottom-left':'none', 'bottom-center':'none', 'bottom-right':'none' };
+  const slots: Record<string,string> = { 'top-left': f.headerMode === 'custom' && f.headerText ? cssContent(f.headerText) : '""', 'top-center':'""', 'top-right':'""', 'bottom-left':'""', 'bottom-center':'""', 'bottom-right':'""' };
   const positions = footerPositions(f);
-  if (f.footerBrand) slots[`bottom-${positions.brand}`] = cssContent('TEXLA DOCS');
-  if (f.footerText) slots[`bottom-${positions.text}`] = cssContent(f.footerText);
+  const brand=cssContent('Texla Docs - El arte de escribir bien');
+  if(f.footerBrand)slots['bottom-center']=brand;
+  const footerSlot=f.footerBrand&&positions.text==='center'?(f.pageNumbers==='bottom-left'?'right':'left'):positions.text;
+  if (f.footerText) slots[`bottom-${footerSlot}`] = cssContent(f.footerText);
   if (f.pageNumbers !== 'none') slots[numberSlot] = `${cssContent(f.pageNumberPrefix)} counter(page, ${style}) ${cssContent(f.pageNumberSuffix)}`;
+  if(f.footerBrand&&numberSlot==='bottom-center'&&f.pageNumbers!=='none')slots[numberSlot]+=` "\\a " ${brand}`;
   return `@media print {
     @page { size: ${printPageSize(f.pageSize)}; margin: ${f.margin}cm;
-      ${Object.entries(slots).map(([slot,content]) => `@${slot} { content: ${content}; font-family: ${family}; font-size: ${slot === `bottom-${positions.brand}` && f.footerBrand ? '8' : '9'}pt; color: #333; vertical-align: middle; }`).join('\n')}
+      ${Object.entries(slots).map(([slot,content]) => `@${slot} { content: ${content}; font-family: ${family}; font-size: ${slot==='bottom-center'&&f.footerBrand?'8':'9'}pt; color: ${slot==='bottom-center'&&f.footerBrand?'#739681':'#333'}; vertical-align: ${slot==='bottom-center'&&f.footerBrand?'bottom':'middle'}; ${slot==='bottom-center'&&f.footerBrand?'white-space:pre;line-height:14pt;padding-bottom:5mm;print-color-adjust:exact;-webkit-print-color-adjust:exact;':''} }`).join('\n')}
     }
-    @page:first { counter-increment: page ${f.pageNumberStart}; ${!f.numberFirstPage && f.pageNumbers !== 'none' ? `@${numberSlot} { content: none; }` : ''} }
+    @page:first { counter-increment: page ${f.pageNumberStart}; ${!f.numberFirstPage && f.pageNumbers !== 'none' ? `@${numberSlot} { content: ${f.footerBrand&&numberSlot==='bottom-center'?brand:'""'}; }` : ''} }
   }`;
 }

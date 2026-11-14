@@ -9,7 +9,7 @@ async function prepare(page: Page) {
   });
 }
 async function printedPages(page: Page) {
-  await page.evaluate(()=>document.fonts.ready);const pdf=await page.pdf({preferCSSPageSize:true,printBackground:true});
+  await page.evaluate(()=>document.fonts.ready);const pdf=await page.pdf({preferCSSPageSize:true,printBackground:true,displayHeaderFooter:true});
   return page.evaluate(async bytes => {
     // Read the actual Chromium PDF in-browser with the same PDF.js library as the importer.
     const {getDocument,GlobalWorkerOptions}=await import(/* @vite-ignore */ '/node_modules/pdfjs-dist/build/pdf.mjs');
@@ -22,7 +22,7 @@ async function printedPages(page: Page) {
 test('blank default header, editable running text and automatic page numbers survive actual PDF and LaTeX export',async({page})=>{
   await prepare(page);
   await expect(page.locator('.paper-eyebrow')).toHaveCount(0);await expect(page.locator('.running-header-editor>button>span').first()).toBeEmpty();
-  await expect(page.locator('.footer-brand')).toHaveText('TEXLA DOCS');
+  await expect(page.locator('.footer-brand')).toHaveText('Texla Docs - El arte de escribir bien');
   await page.getByRole('button',{name:'Editar encabezado',exact:true}).click();
   const dialog=page.getByRole('dialog');await dialog.getByLabel('Contenido del encabezado',{exact:true}).selectOption('custom');
   await dialog.getByLabel('Texto del encabezado',{exact:true}).fill('Instituto de investigación');
@@ -31,8 +31,8 @@ test('blank default header, editable running text and automatic page numbers sur
   await dialog.getByLabel('Número inicial de página',{exact:true}).fill('5');
   await dialog.getByLabel('Texto antes del número de página',{exact:true}).fill('Página ');
   await page.getByRole('button',{name:'Listo',exact:true}).click();
-  const pages=await printedPages(page);expect(pages).toHaveLength(3);
-  for(let i=0;i<3;i++){expect(pages[i]).toContain('Instituto de investigación');expect(pages[i]).toContain('Proyecto Capstone');expect(pages[i]).toContain('TEXLA DOCS');expect(pages[i]).toContain(`Página ${i+5}`);}
+  const pages=await printedPages(page);expect(pages).toHaveLength(3);for(const text of pages){expect(text.split('Texla Docs - El arte de escribir bien')).toHaveLength(2);expect(text).not.toMatch(/\d{1,2}\/\d{1,2}\/\d{2,4}/);}
+  for(let i=0;i<3;i++){expect(pages[i]).toContain('Instituto de investigación');expect(pages[i]).toContain('Proyecto Capstone');expect(pages[i]).toContain('Texla Docs - El arte de escribir bien');expect(pages[i]).toContain(`Página ${i+5}`);}
   await page.getByRole('button',{name:'Encabezado y pie',exact:true}).click();
   await dialog.getByLabel('Estilo de números de página',{exact:true}).selectOption('roman');
   await dialog.getByLabel('Mostrar número en la primera página',{exact:true}).uncheck();
@@ -45,7 +45,7 @@ test('blank default header, editable running text and automatic page numbers sur
   await page.getByRole('button',{name:'Encabezado y pie',exact:true}).click();await expect(dialog.getByLabel('Número inicial de página',{exact:true})).toHaveValue('5');
   await dialog.getByLabel('Numeración de páginas',{exact:true}).selectOption('none');await dialog.getByLabel('Contenido del encabezado',{exact:true}).selectOption('auto');
   await page.getByRole('button',{name:'Listo',exact:true}).click();
-  const unnumbered=await printedPages(page);for(const p of unnumbered){expect(p).not.toContain('Página ');expect(p).not.toContain('Instituto de investigación');expect(p).toContain('TEXLA DOCS');}
+  const unnumbered=await printedPages(page);for(const p of unnumbered){expect(p).not.toContain('Página ');expect(p).not.toContain('Instituto de investigación');expect(p).toContain('Texla Docs - El arte de escribir bien');}
 });
 
 test('page furniture is editable on mobile and imported headers can be hidden without deleting them',async({page})=>{

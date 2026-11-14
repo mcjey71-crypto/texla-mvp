@@ -173,8 +173,8 @@ test('live shared comments, typography and voice synchronize through the publish
       await page.getByRole('button',{name:'Despejar pantalla',exact:true}).click();
       await page.locator('.canvas').evaluate(el=>el.scrollTop=0);
       const paper=await page.locator('.paper').boundingBox();
-      expect(paper!.y).toBeGreaterThanOrEqual(0);expect(paper!.y).toBeLessThan(30);
-      const restore=page.getByRole('button',{name:'Mostrar herramientas',exact:true});
+      await expect(page.locator('.toolbar')).toBeVisible();await expect(page.locator('.tiptap')).toHaveAttribute('contenteditable','true');const bar=await page.locator('.toolbar').boundingBox();expect(paper!.y).toBeGreaterThanOrEqual(bar!.y+bar!.height);expect(paper!.y).toBeLessThan(200);
+      const restore=page.getByRole('button',{name:'Salir de vista despejada',exact:true});
       expect((await restore.boundingBox())!.width).toBeLessThanOrEqual(34);
       await restore.click();await expect(page.locator('.toolbar')).toBeVisible();
       await expect(page.locator('.walkie-heading')).toContainText('2 en el canal');
